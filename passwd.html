@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Memorable, Offline, Secure, Password Generator</title>
+<link rel="manifest" href="manifest.json">
+
+<style>
+:root {
+  --bg:      #0e0e11;
+  --paper:   #141418;
+  --ink:     #e8e6e0;
+  --sub:     #5a5870;
+  --rule:    #242430;
+  --accent:  #ff6b6b;
+  --green:   #3ddc84;
+  --mono:    "Courier New", Courier, monospace;
+  --serif:   Georgia, "Times New Roman", serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--mono);
+  min-height: 100vh;
+  padding: 40px 20px 60px;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: repeating-linear-gradient(
+    0deg, transparent, transparent 27px, rgba(255,255,255,.025) 27px, rgba(255,255,255,.025) 28px
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.wrap {
+  position: relative;
+  max-width: 680px;
+  margin: 0 auto;
+  z-index: 1;
+}
+
+/* ── header ── */
+header {
+  border-bottom: 3px double var(--ink);
+  padding-bottom: 14px;
+  margin-bottom: 28px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+header h1 { font-family: var(--serif); font-size: 28px; font-weight: 700; }
+header h1 span { color: var(--accent); }
+
+.tagline { font-size: 10px; color: var(--sub); letter-spacing: .12em; text-transform: uppercase; }
+
+/* ── regen row ── */
+.regen-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.regen-row p { font-size: 10px; color: var(--sub); letter-spacing: .1em; text-transform: uppercase; }
+
+button.regen {
+  background: var(--ink);
+  color: var(--bg);
+  border: none;
+  border-radius: 1px;
+  padding: 7px 18px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: opacity .15s;
+}
+button.regen:hover  { opacity: .75; }
+button.regen:active { opacity: .6; }
+
+/* ── password list ── */
+.pw-list { display: flex; flex-direction: column; gap: 6px; }
+
+.pw-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+  animation: fadeIn .25s ease both;
+}
+.pw-item:hover { border-color: var(--ink); background: #1a1a20; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.pw-text { font-size: 16px; letter-spacing: .04em; word-break: break-all; line-height: 1.4; }
+.pw-text .seg-word { color: var(--ink); }
+.pw-text .seg-num  { color: var(--accent); font-weight: 700; }
+.pw-text .seg-sym  { color: #b48eff; font-weight: 700; }
+.pw-text .seg-leet { color: #5bc0de; }
+
+.copy-hint {
+  font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--sub); white-space: nowrap; flex-shrink: 0; transition: color .15s;
+}
+.pw-item:hover .copy-hint { color: var(--ink); }
+.pw-item.copied { border-color: var(--green); background: rgba(61,220,132,.05); }
+.pw-item.copied .copy-hint { color: var(--green); }
+
+/* ── options (query string bar) ── */
+.opts-bar {
+  margin-top: 28px;
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--sub);
+  background: var(--paper);
+  padding: 12px 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 0;
+}
+
+.opts-bar .qs-prefix {
+  font-size: 12px;
+  color: var(--sub);
+  margin-right: 2px;
+  user-select: none;
+}
+
+/* each param = key + = + value */
+.param {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+}
+
+.param-key   { color: var(--sub); }
+.param-eq    { color: var(--sub); margin: 0 1px; }
+
+/* clickable value tokens */
+.param-val {
+  color: var(--accent);
+  cursor: pointer;
+  border-bottom: 1px dashed var(--rule);
+  transition: color .12s, border-color .12s;
+  user-select: none;
+  padding: 0 1px;
+}
+.param-val:hover { color: var(--ink); border-color: var(--ink); }
+
+/* inline number input (for wlen/nlen) */
+.param-val input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed var(--accent);
+  color: var(--accent);
+  font: inherit;
+  font-size: 12px;
+  width: 28px;
+  text-align: center;
+  outline: none;
+  padding: 0 1px;
+}
+.param-val input:focus { border-color: var(--ink); color: var(--ink); }
+
+.param-sep { color: var(--sub); margin: 0 3px; }
+
+/* ── footer ── */
+footer {
+  margin-top: 20px;
+  border-top: 1px solid var(--rule);
+  padding-top: 12px;
+  font-size: 10px;
+  color: var(--sub);
+  letter-spacing: .06em;
+}
+</style>
+</head>
+<body id="denny.wordpress.com">
+<div class="wrap">
+
+  <header>
+    <h1>Pass<span>Gen</span></h1>
+    <span class="tagline">Memorable · Offline · Secure <a href="https://doh-1b1.pages.dev/rekapass.html">Multilingual Password Generator</a></span>
+  </header>
+
+  <div class="regen-row">
+    <p>change your options then CTRL+D to save</p>
+    <button class="regen" onclick="generate()">↺ Regenerate</button>
+  </div>
+
+  <div class="pw-list" id="pwList"></div>
+
+  <!-- OPTIONS AS QUERY STRING -->
+  <div class="opts-bar" id="optsBar"></div>
+
+  <footer>Generated entirely in your browser. Nothing is sent anywhere. denny.wordpress.com</footer>
+</div>
+
+<script>
+// ── syllables ────────────────────────────────────────────────────
+const ONSET = ['b','c','d','f','g','h','j','k','l','m','n','p','r','s','t','v','w','z',
+               'br','cl','dr','fl','fr','gl','gr','pl','pr','sl','sm','sn','sp','st','sw','tr'];
+const VOWEL = ['a','e','i','o','u','ai','ay','ea','ee','oo','ou','ie'];
+const CODA  = ['','','','n','m','l','r','s','t','nd','ng','nk','st','ld','rd'];
+const SYMS  = ['!','@','#','$','%','&','*','+','=','?'];
+const LEET  = { a:'4', e:'3', i:'1', o:'0', s:'5', t:'7', b:'8', g:'9' };
+
+function rand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function randInt(a,b) { return Math.floor(Math.random()*(b-a+1))+a; }
+function syllable() { return rand(ONSET)+rand(VOWEL)+rand(CODA); }
+function makeWord(n) { let w=''; while(w.length<n) w+=syllable(); return w.slice(0,n); }
+function makeNum(n)  { let s=''; for(let i=0;i<n;i++) s+=randInt(0,9); return s; }
+
+function sp(cls,t) { return `<span class="${cls}">${t}</span>`; }
+
+function renderWord(word, capFirst, useLeet) {
+  let chars = word.split('');
+  if (capFirst) chars[0] = chars[0].toUpperCase();
+  return chars.map(c => {
+    if (useLeet) {
+      const sub = LEET[c.toLowerCase()];
+      if (sub) return sp('seg-leet', c === c.toUpperCase() ? sub.toUpperCase() : sub);
+    }
+    return sp('seg-word', c);
+  }).join('');
+}
+
+// ── read params ──────────────────────────────────────────────────
+function getParams() {
+  const p = new URLSearchParams(location.search);
+  return {
+    wlen:  Math.max(5, Math.min(29, parseInt(p.get('wlen'))  || 10)),
+    nlen:  Math.max(1, Math.min(11, parseInt(p.get('nlen'))  || 3)),
+    upper: p.get('upper') !== '0',           // default on
+    leet:  p.get('leet')  === '1',           // default off
+    sym:   p.get('sym')   === '1',           // default off
+    splace: p.get('splace') === 'sep' ? 'sep' : 'end',
+  };
+}
+
+function navigate(overrides) {
+  const cur = getParams();
+  const next = { ...cur, ...overrides };
+  const q = new URLSearchParams({
+    wlen:   next.wlen,
+    nlen:   next.nlen,
+    upper:  next.upper  ? '1' : '0',
+    leet:   next.leet   ? '1' : '0',
+    sym:    next.sym    ? '1' : '0',
+    splace: next.splace,
+  });
+  location.search = q.toString();
+}
+
+// ── build one password ───────────────────────────────────────────
+function buildPassword(o) {
+  let plain = '', html = '';
+
+  if (o.upper) {
+    const h1 = Math.ceil(o.wlen/2), h2 = o.wlen - h1;
+    const w1 = makeWord(h1), w2 = makeWord(h2);
+    if (o.sym && o.splace === 'sep') {
+      const s = rand(SYMS);
+      plain = w1 + s + w2[0].toUpperCase() + w2.slice(1);
+      html  = renderWord(w1, false, o.leet) + sp('seg-sym', s) + renderWord(w2, true, o.leet);
+    } else {
+      plain = w1 + w2[0].toUpperCase() + w2.slice(1);
+      html  = renderWord(w1, false, o.leet) + renderWord(w2, true, o.leet);
+    }
+  } else {
+    const w = makeWord(o.wlen);
+    if (o.sym && o.splace === 'sep') {
+      const mid = Math.floor(o.wlen/2), s = rand(SYMS);
+      plain = w.slice(0,mid) + s + w.slice(mid);
+      html  = renderWord(w.slice(0,mid), false, o.leet) + sp('seg-sym',s) + renderWord(w.slice(mid), false, o.leet);
+    } else {
+      plain = w; html = renderWord(w, false, o.leet);
+    }
+  }
+
+  if (o.nlen > 0) { const n=makeNum(o.nlen); plain+=n; html+=sp('seg-num',n); }
+  if (o.sym && o.splace==='end') { const s=rand(SYMS); plain+=s; html+=sp('seg-sym',s); }
+
+  return { plain, html };
+}
+
+// ── render list ──────────────────────────────────────────────────
+function generate() {
+  const o = getParams();
+  const list = document.getElementById('pwList');
+  list.innerHTML = '';
+  for (let i=0; i<10; i++) {
+    const {plain, html} = buildPassword(o);
+    const item = document.createElement('div');
+    item.className = 'pw-item';
+    item.style.animationDelay = (i*30)+'ms';
+    item.innerHTML = `<span class="pw-text">${html}</span><span class="copy-hint">copy</span>`;
+    item.addEventListener('click', () => copyPw(item, plain));
+    list.appendChild(item);
+  }
+}
+
+async function copyPw(el, text) {
+  try { await navigator.clipboard.writeText(text); }
+  catch {
+    const ta = Object.assign(document.createElement('textarea'),
+      { value: text, style: 'position:fixed;opacity:0' });
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+  }
+  const hint = el.querySelector('.copy-hint');
+  el.classList.add('copied'); hint.textContent = 'copied!';
+  setTimeout(() => { el.classList.remove('copied'); hint.textContent = 'copy'; }, 1800);
+}
+
+// ── render options bar as fake query string ──────────────────────
+function renderOptsBar() {
+  const o = getParams();
+  const bar = document.getElementById('optsBar');
+  bar.innerHTML = '';
+
+  function tok(key, display) {
+    const wrap = document.createElement('span');
+    wrap.className = 'param';
+    wrap.innerHTML = `<span class="param-key">${key}</span><span class="param-eq">=</span>`;
+    wrap.appendChild(display);
+    return wrap;
+  }
+
+  function sep() {
+    const s = document.createElement('span');
+    s.className = 'param-sep'; s.textContent = '&';
+    return s;
+  }
+
+  // prefix
+  const pre = document.createElement('span');
+  pre.className = 'qs-prefix'; pre.textContent = '?';
+  bar.appendChild(pre);
+
+  // wlen — inline number input
+  const wInput = document.createElement('input');
+  wInput.type='number'; wInput.value=o.wlen; wInput.min=4; wInput.max=24;
+  wInput.addEventListener('change', () => navigate({ wlen: Math.max(4,Math.min(24,+wInput.value||10)) }));
+  const wWrap = document.createElement('span'); wWrap.className='param-val';
+  wWrap.appendChild(wInput);
+  bar.appendChild(tok('wlen', wWrap));
+  bar.appendChild(sep());
+
+  // nlen — inline number input
+  const nInput = document.createElement('input');
+  nInput.type='number'; nInput.value=o.nlen; nInput.min=0; nInput.max=10;
+  nInput.addEventListener('change', () => navigate({ nlen: Math.max(0,Math.min(10,+nInput.value||0)) }));
+  const nWrap = document.createElement('span'); nWrap.className='param-val';
+  nWrap.appendChild(nInput);
+  bar.appendChild(tok('nlen', nWrap));
+  bar.appendChild(sep());
+
+  // upper — toggle 0/1
+  const uVal = document.createElement('span');
+  uVal.className='param-val'; uVal.textContent = o.upper ? '1' : '0';
+  uVal.title = 'click to toggle';
+  uVal.addEventListener('click', () => navigate({ upper: !o.upper }));
+  bar.appendChild(tok('upper', uVal));
+  bar.appendChild(sep());
+
+  // leet — toggle 0/1
+  const lVal = document.createElement('span');
+  lVal.className='param-val'; lVal.textContent = o.leet ? '1' : '0';
+  lVal.title = 'click to toggle';
+  lVal.addEventListener('click', () => navigate({ leet: !o.leet }));
+  bar.appendChild(tok('leet', lVal));
+  bar.appendChild(sep());
+
+  // sym — toggle 0/1
+  const sVal = document.createElement('span');
+  sVal.className='param-val'; sVal.textContent = o.sym ? '1' : '0';
+  sVal.title = 'click to toggle';
+  sVal.addEventListener('click', () => navigate({ sym: !o.sym }));
+  bar.appendChild(tok('sym', sVal));
+
+  // splace — only show when sym=1
+  if (o.sym) {
+    bar.appendChild(sep());
+    const spVal = document.createElement('span');
+    spVal.className='param-val';
+    spVal.textContent = o.splace;
+    spVal.title = 'click to toggle end/sep';
+    spVal.addEventListener('click', () => navigate({ splace: o.splace==='end' ? 'sep' : 'end' }));
+    bar.appendChild(tok('splace', spVal));
+  }
+}
+
+renderOptsBar();
+generate();
+</script>
+</body>
+</html>
