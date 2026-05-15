@@ -2,11 +2,29 @@ export async function onRequest(context) {
   const { request } = context;
   const url = new URL(request.url);
 
+  // Get device log from path or query param
   const pathParts = url.pathname.split('/').filter(Boolean);
   const deviceLog = pathParts.length > 1? pathParts[1] : url.searchParams.get('device');
 
-  const upstreamUrl = new URL('https://cloudflare-dns.com/dns-query');
-  upstreamUrl.search = url.search;
+  // Get upstream DoH from?doh= param, fallback to Cloudflare
+  const upstreamParam = url.searchParams.get('doh');
+  const defaultUpstream = 'https://cloudflare-dns.com/dns-query';
+
+  let upstreamUrl;
+  try {
+    upstreamUrl = new URL(upstreamParam || defaultUpstream);
+  } catch {
+    upstreamUrl = new URL(defaultUpstream);
+  }
+
+  // Forward query params except 'doh' and 'device' since we handle those
+  const upstreamSearch = new URLSearchParams();
+  for (const [k, v] of url.searchParams) {
+    if (k!== 'doh' && k!== 'device') {
+      upstreamSearch.append(k, v);
+    }
+  }
+  upstreamUrl.search = upstreamSearch.toString();
 
   const headers = new Headers(request.headers);
   headers.delete('host');
