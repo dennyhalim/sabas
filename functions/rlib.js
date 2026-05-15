@@ -236,7 +236,7 @@ const entries = Object.entries(grouped).map(([key, book]) => {
   }
 
   const xml = buildAcquisition(cat, books);
-    if (!q && !nocache) await cache.put(`cat:${cat}`, JSON.stringify({ ts: Date.now(), xml }), { expirationTtl: CONFIG.cache_seconds });
+    if (!q && !nocache) await cache.put(`cat:${cat}`, JSON.stringify({ ts: Date.now(), xml }), { expirationTtl: 864000 });
       
   return new Response(xml, {
     headers: {
@@ -261,7 +261,7 @@ const parseCachedBooks = (xml) => {
 };
     
     // Simpen ke KV. TTL 2 jam biar aman
-    await cache.put(cacheKey, JSON.stringify({ ts: Date.now(), xml }), { expirationTtl: CONFIG.cache_seconds });
+    await cache.put(cacheKey, JSON.stringify({ ts: Date.now(), xml }), { expirationTtl: 864000 });
 
     return new Response(xml, {
       headers: {
