@@ -249,7 +249,7 @@ function renderWord(word, capFirst, useLeet) {
 function getParams() {
   const p = new URLSearchParams(location.search);
   return {
-    wlen:  Math.max(5, Math.min(29, parseInt(p.get('wlen'))  || 10)),
+    wlen:  Math.max(5, Math.min(29, parseInt(p.get('wlen'))  || 12)),
     nlen:  Math.max(1, Math.min(11, parseInt(p.get('nlen'))  || 3)),
     upper: p.get('upper') !== '0',           // default on
     leet:  p.get('leet')  === '1',           // default off
