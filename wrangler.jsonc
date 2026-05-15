@@ -1,0 +1,15 @@
+{
+  "name": "doh",
+  "compatibility_date": "2026-01-14",
+  "main": "./dist/_worker.js",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS"
+  },
+  "kv_namespaces": [
+    {
+      "binding": "OPDS_CACHE",
+      "id": "1ce641188dc74df192b64ac098882127"
+    }
+  ]
+}
