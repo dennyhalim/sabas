@@ -12,7 +12,7 @@ export async function onRequestGet(context) {
   const FEED_AUTHOR = env.FEED_AUTHOR || 'Your Library';
   const BASE_URL = url.origin;
   const SCRIPT_PATH = url.pathname; // /opds, /books.xml, /feed, dll
-  const CSV_URL = env.CSV_URL || `https://docs.google.com/spreadsheets/d/e/2PACX-1vTTcNN6fmETWj5DDNC-FGSkdmD-8jCspO1dbMTweH4OjUM8ofBCuUR0NA7VfyLJG8ho-hPp6aT_AJbb/pub?gid=2002946883&single=true&output=csv`;
+  const CSV_URL = env.CSV_URL || `https://docs.google.com/spreadsheets/d/e/2PACX-1vTTcNN6fmETWj5DDNC-FGSkdmD-8jCspO1dbMTweH4OjUM8ofBCuUR0NA7VfyLJG8ho-hPp6aT_AJbb/pub?output=csv`;
 
   // === GET CSV ===
   let csvData;
