@@ -17,15 +17,15 @@
 // ─── CONFIG (safe to commit — no secrets here) ───────────────────────────────
 
 const CONFIG = {
-  title:    'Your Name',
-  bio:      'Writer · Developer · Curator',
+  title:    'Bagaimana Diselamatkan',
+  bio:      'Berkah Keselamatan Allah ',
   avatar:   '',   // full https:// URL or '' for initials
 
   links: [
-    { label: 'Website',    url: 'https://example.com',           icon: '🌐' },
-    { label: 'GitHub',     url: 'https://github.com/yourname',   icon: '🐙' },
-    { label: 'Mastodon',   url: 'https://mastodon.social/@you',  icon: '🐘' },
-    { label: 'Newsletter', url: 'https://example.com/newsletter',icon: '📬' },
+    { label: 'Website',    url: 'https://matikemana.com',           icon: '🌐' },
+    { label: 'Facebook',     url: 'https://facebook.com/alkitabsaja',   icon: '🐙' },
+    { label: 'Instagram',   url: 'https://instagram.com/alkitabsaja',  icon: '🐘' },
+    { label: 'Telegram', url: 'https://t.me/addlist/Qt557gGoAsIwZDI1',icon: '📬' },
   ],
 
   rss: {
