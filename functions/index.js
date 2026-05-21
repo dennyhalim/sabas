@@ -33,7 +33,7 @@ const CONFIG = {
     url:      'https://matikemana.com/web1/feed',  // '' to disable
     max:      15,
     label:    'Latest posts',
-    cacheTtl: 1800,  // seconds
+    cacheTtl: 18000,  // seconds
   },
 
   youtube: {
