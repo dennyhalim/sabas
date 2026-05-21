@@ -26,6 +26,7 @@ const CONFIG = {
     { label: 'Facebook',     url: 'https://facebook.com/alkitabsaja',   icon: '🐙' },
     { label: 'Instagram',   url: 'https://instagram.com/alkitabsaja',  icon: '🐘' },
     { label: 'Telegram', url: 'https://t.me/addlist/Qt557gGoAsIwZDI1',icon: '📬' },
+    { label: 'Tiktok',     url: 'https://www.tiktok.com/@rantovaber/',   icon: '🐙' },
   ],
 
   rss: {
