@@ -31,7 +31,7 @@ const CONFIG = {
 
   rss: {
     url:      'https://matikemana.com/web1/feed',  // '' to disable
-    max:      15,
+    max:      30,
     label:    'Latest posts',
     cacheTtl: 18000,  // seconds
   },
