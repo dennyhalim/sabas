@@ -17,7 +17,7 @@
 // ─── CONFIG (safe to commit — no secrets here) ───────────────────────────────
 
 const CONFIG = {
-  title:    'Bagaimana Diselamatkan',
+  title:    'المسيح هو الله',
   bio:      'Berkah Keselamatan Allah ',
   avatar:   '',   // full https:// URL or '' for initials
 
