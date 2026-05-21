@@ -368,7 +368,7 @@ function renderHtml(rssLinks) {
     <div class="section-label">${escHtml(youtube.label)}</div>
     <div class="yt-wrap">
       <iframe
-        src="https://www.youtube.com/embed/videoseries?list=${ytId}&rel=0"
+        src="https://www.youtube-nocookie.com/embed/videoseries?list=${ytId}&rel=0"
         title="${escHtml(youtube.label)}"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowfullscreen loading="lazy"></iframe>
@@ -453,12 +453,12 @@ export async function onRequest(context) {
   const ip     = getClientIp(request);
 
   const secHeaders = {
-    'X-Frame-Options':           'SAMEORIGIN',
+//    'X-Frame-Options':           'SAMEORIGIN',
     'X-Content-Type-Options':    'nosniff',
     'Referrer-Policy':           'strict-origin-when-cross-origin',
     'Content-Security-Policy':
       "default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; " +
-      "img-src * data:; frame-src https://www.youtube.com; " +
+      "img-src * data:; frame-src https://www.youtube-nocookie.com; " +
       "font-src https://fonts.gstatic.com; style-src-elem 'unsafe-inline' https://fonts.googleapis.com",
   };
 
