@@ -30,7 +30,7 @@ const CONFIG = {
 
   rss: {
     url:      'https://matikemana.com/web1/feed',  // '' to disable
-    max:      5,
+    max:      15,
     label:    'Latest posts',
     cacheTtl: 1800,  // seconds
   },
@@ -46,7 +46,6 @@ const CONFIG = {
   },
 
   honeypot: {
-    tarpitMs:   8000,   // ms to delay bot responses
     minFormSec: 3,      // reject if submitted faster than this
   },
 };
@@ -191,10 +190,7 @@ async function checkHoneypot(env, ip, formData, request) {
 
   if (!triggered) return false;
 
-  // Tarpit — waste bot's time
-  await new Promise(r => setTimeout(r, CONFIG.honeypot.tarpitMs));
-
-  // Block IP
+  // Block IP and log — no tarpit, instant fake success to save free tier quota
   await blockIp(env, ip, reason);
 
   // Log to Telegram
