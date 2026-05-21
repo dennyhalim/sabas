@@ -41,7 +41,7 @@ const CONFIG = {
   },
 
   contact: {
-    enabled:    true,
+    enabled:    false,
     maxLen:     1000,
   },
 
