@@ -389,7 +389,7 @@ function renderHtml(rssLinks) {
         <input id="f-email" type="email" maxlength="200" autocomplete="email">
       </div>
       <div class="form-field">
-        <label for="f-phone">Phone <span style="color:var(--muted);font-size:.7rem">(optional)</span></label>
+        <label for="f-phone">Phone <span style="color:var(--muted);font-size:.7rem"></span></label>
         <input id="f-phone" type="tel" maxlength="30" autocomplete="tel">
       </div>
       <div class="form-field">
