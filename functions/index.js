@@ -18,7 +18,7 @@
 
 const CONFIG = {
   title:    'المسيح هو الله',
-  bio:      'Barakah Keselamatan Allah ',
+  bio:      'Rahmatun najāh min Allāh ',
   avatar:   '',   // full https:// URL or '' for initials
 
   links: [
