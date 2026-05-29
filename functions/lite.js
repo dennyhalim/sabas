@@ -1,44 +1,101 @@
-const doh = 'https://freedns.controld.com/no-ads-porn-gambling-malware-typo'
-const dohjson = 'https://freedns.controld.com/no-ads-porn-gambling-malware-typo'
-const contype = 'application/dns-message'
-const jstontype = 'application/dns-json'
+export async function onRequest(context) {
+  const { request } = context;
+  const url = new URL(request.url);
 
-export const onRequestGet = async ({request}) => {
-	 const { method, headers, url } = request 
-	 const searchParams = new URL(url).searchParams
-	 if (searchParams.has('dns')) {
-	 return await fetch(doh + '?dns=' + searchParams.get('dns'), {
-            method: 'GET',
-            headers: {
-                'Accept': contype,
-            }
-        });
-	 } else if (method== 'GET' && headers.get('Accept')==jstontype) {
-        const search = new URL(url).search
-         return await fetch(dohjson + search, {
-            method: 'GET',
-            headers: {
-                'Accept': jstontype,
-            }
-        });
-    } else {
-        return new Response("", {status: 404})
+  // Get device log from path or query param
+  const pathParts = url.pathname.split('/').filter(Boolean);
+  const deviceLog = pathParts.length > 1? pathParts[1] : url.searchParams.get('device');
+
+  // Get upstream DoH from?doh= param, fallback to Cloudflare
+  const upstreamParam = url.searchParams.get('doh');
+  const defaultUpstream = 'https://freedns.controld.com/no-ads-porn-gambling-malware-typo';
+
+  let upstreamUrl;
+  try {
+    upstreamUrl = new URL(upstreamParam || defaultUpstream);
+  } catch {
+    upstreamUrl = new URL(defaultUpstream);
+  }
+
+  // Forward query params except 'doh' and 'device' since we handle those
+  const upstreamSearch = new URLSearchParams();
+  for (const [k, v] of url.searchParams) {
+    if (k!== 'doh' && k!== 'device') {
+      upstreamSearch.append(k, v);
     }
+  }
+  upstreamUrl.search = upstreamSearch.toString();
 
+  const headers = new Headers(request.headers);
+  headers.delete('host');
+  headers.set('accept', 'application/dns-message');
+  if (deviceLog) headers.set('X-Device-Log', deviceLog);
+
+  const upstreamResp = await fetch(new Request(upstreamUrl, {
+    method: request.method,
+    headers,
+    body: request.method === 'POST'? request.body : null
+  }));
+
+  if (!upstreamResp.ok || upstreamResp.headers.get('content-type')!== 'application/dns-message') {
+    return upstreamResp;
+  }
+
+  const dnsBuffer = await upstreamResp.arrayBuffer();
+  const modifiedBuffer = modifyTTLs(dnsBuffer, 10);
+
+  return new Response(modifiedBuffer, {
+    headers: {
+      'content-type': 'application/dns-message',
+      'cache-control': 'no-cache',
+      'access-control-allow-origin': '*'
+    }
+  });
 }
 
-export const onRequestPost = async ({ request }) => {
-	const { headers } = request 
-  if (headers.get('content-type')==contype) {
-        return fetch(doh, {
-            method: 'POST',
-            headers: {
-                'Accept': contype,
-                'Content-Type': contype,
-            },
-            body: request.body,
-        });
-		 } else {
-        return new Response("", {status: 404})
+function modifyTTLs(buffer, factor) {
+  const view = new DataView(buffer);
+  let offset = 12;
+
+  const ancount = view.getUint16(6);
+  const nscount = view.getUint16(8);
+  const arcount = view.getUint16(10);
+
+  const qdcount = view.getUint16(4);
+  for (let i = 0; i < qdcount; i++) {
+    offset = skipName(view, offset);
+    offset += 4;
+  }
+
+  offset = processSection(view, offset, ancount, factor);
+  offset = processSection(view, offset, nscount, factor);
+  offset = processSection(view, offset, arcount, factor);
+
+  return buffer;
+}
+
+function processSection(view, offset, count, factor) {
+  for (let i = 0; i < count; i++) {
+    offset = skipName(view, offset);
+    const type = view.getUint16(offset);
+    offset += 4;
+    if (type === 1 || type === 28 || type === 5) {
+      const ttl = view.getUint32(offset);
+      view.setUint32(offset, ttl * factor);
     }
+    offset += 4;
+    const rdlength = view.getUint16(offset);
+    offset += 2 + rdlength;
+  }
+  return offset;
+}
+
+function skipName(view, offset) {
+  while (offset < view.byteLength) {
+    const len = view.getUint8(offset);
+    if (len === 0) return offset + 1;
+    if ((len & 0xC0) === 0xC0) return offset + 2;
+    offset += len + 1;
+  }
+  return offset;
 }
