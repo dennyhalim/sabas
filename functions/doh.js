@@ -8,7 +8,7 @@ export async function onRequest(context) {
 
   // Get upstream DoH from?doh= param, fallback to Cloudflare
   const upstreamParam = url.searchParams.get('doh');
-  const defaultUpstream = 'https://cloudflare-dns.com/dns-query';
+  const defaultUpstream = 'https://family.dns.mullvad.net/dns-query';
 
   let upstreamUrl;
   try {
