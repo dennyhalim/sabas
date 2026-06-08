@@ -3,129 +3,238 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>CIDR Calculator IPv4 + IPv6</title>
+<title>CIDR Calculator v2</title>
 <style>
-body{font-family:system-ui,Arial;max-width:700px;margin:30px auto;padding:20px;background:#0f172a;color:#e2e8f0}
-h2{color:#38bdf8}
-input,button{padding:10px;border-radius:6px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;width:100%;box-sizing:border-box;margin:6px 0}
+body{font-family:system-ui,Arial;max-width:750px;margin:30px auto;padding:20px;background:#0f172a;color:#e2e8f0}
+h2{color:#38bdf8;margin-bottom:5px}
+input,button{padding:10px;border-radius:6px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;width:100%;box-sizing:border-box;margin:5px 0}
 button{background:#2563eb;border:0;cursor:pointer;font-weight:600}
 button:hover{background:#1d4ed8}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .result{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:15px;margin-top:15px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-b{color:#38bdf8}
-.error{color:#f87171}
+label{font-size:13px;color:#94a3b8}
 small{color:#94a3b8}
-@media(max-width:600px){.grid{grid-template-columns:1fr}}
+.error{color:#f87171}
+.copy-row{display:flex;gap:8px}
+.copy-row input{flex:1}
+@media(max-width:650px){.grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 
-<h2>CIDR Calculator - Offline</h2>
-<input id="cidr" placeholder="Contoh: 192.168.1.0/24 atau 2001:db8::/48" autocomplete="off">
-<button onclick="calc()">Hitung</button>
-<small>Mendukung IPv4 /0-32 dan IPv6 /0-128. Bisa paste langsung.</small>
+<h2>CIDR Calculator Offline</h2>
+<small>Edit salah satu field, yang lain auto update</small>
+
+<div class="grid">
+  <div>
+    <label>IP Address</label>
+    <input id="ip" placeholder="192.168.1.0">
+  </div>
+  <div>
+    <label>CIDR / Prefix</label>
+    <input id="cidr" type="number" min="0" max="128">
+  </div>
+  <div>
+    <label>Netmask</label>
+    <input id="netmask" placeholder="255.255.255.0">
+  </div>
+  <div>
+    <label>Total Host</label>
+    <input id="hosts" type="number" min="1">
+  </div>
+</div>
+
+<button onclick="copyLink()">Copy Link Hasil</button>
+<div class="copy-row">
+  <input id="shareLink" readonly>
+</div>
 
 <div id="out"></div>
 
 <script>
-function calc(){
-    const v = document.getElementById('cidr').value.trim();
-    const out = document.getElementById('out');
-    out.innerHTML = '';
+let updating = false;
 
-    if(!v.includes('/')) return out.innerHTML = '<div class="error">Format harus IP/Prefix. Contoh: 10.0.0.0/8</div>';
+function init(){
+  // 1. Load dari URL?cidr=
+  const params = new URLSearchParams(location.search);
+  let cidrParam = params.get('cidr');
 
-    let [ip, prefix] = v.split('/');
-    prefix = parseInt(prefix);
-
-    if(ip.includes(':')) calcIPv6(ip, prefix, out);
-    else calcIPv4(ip, prefix, out);
-}
-
-function calcIPv4(ip, p, out){
-    if(p<0||p>32) return out.innerHTML = '<div class="error">Prefix IPv4 harus 0-32</div>';
-
-    let parts = ip.split('.').map(Number);
-    if(parts.length!=4 || parts.some(n=>n<0||n>255||isNaN(n)))
-        return out.innerHTML = '<div class="error">IP IPv4 tidak valid</div>';
-
-    let ipInt = (parts[0]<<24) + (parts[1]<<16) + (parts[2]<<8) + parts[3];
-    let mask = p===0? 0 : (0xffffffff << (32-p)) >>> 0;
-    let network = ipInt & mask;
-    let broadcast = network | (~mask >>> 0);
-    let hosts = p>=31? (p===31?2:1) : Math.pow(2,32-p)-2;
-    let first = p>=31? network : network+1;
-    let last = p>=31? broadcast : broadcast-1;
-
-    function toIP(n){return [(n>>>24)&255,(n>>>16)&255,(n>>>8)&255,n&255].join('.')}
-
-    out.innerHTML = `
-    <div class="result">
-        <div class="grid">
-            <div><b>Network</b><br>${toIP(network)}/${p}</div>
-            <div><b>Netmask</b><br>${toIP(mask)}</div>
-            <div><b>Broadcast</b><br>${toIP(broadcast)}</div>
-            <div><b>Total Host</b><br>${hosts.toLocaleString()}</div>
-            <div><b>IP Pertama</b><br>${toIP(first)}</div>
-            <div><b>IP Terakhir</b><br>${toIP(last)}</div>
-            <div><b>Wildcard</b><br>${toIP(~mask>>>0)}</div>
-            <div><b>Binary Mask</b><br>${mask.toString(2).padStart(32,'0').match(/.{8}/g).join('.')}</div>
-        </div>
-    </div>`;
-}
-
-function calcIPv6(ip, p, out){
-    if(p<0||p>128) return out.innerHTML = '<div class="error">Prefix IPv6 harus 0-128</div>';
-
-    try{
-        // Expand IPv6
-        let full = expandIPv6(ip);
-        let bin = ipv6ToBin(full);
-        let netBin = bin.slice(0,p) + '0'.repeat(128-p);
-        let firstBin = bin.slice(0,p) + '0'.repeat(128-p);
-        let lastBin = bin.slice(0,p) + '1'.repeat(128-p);
-
-        let network = binToIPv6(netBin);
-        let first = binToIPv6(firstBin);
-        let last = binToIPv6(lastBin);
-        let hosts = p>=64? '2^' + (128-p) : (BigInt(2)**BigInt(128-p)).toString();
-
-        out.innerHTML = `
-        <div class="result">
-            <div class="grid">
-                <div><b>Network</b><br>${network}/${p}</div>
-                <div><b>Prefix Length</b><br>/${p}</div>
-                <div><b>IP Pertama</b><br>${first}</div>
-                <div><b>IP Terakhir</b><br>${last}</div>
-                <div style="grid-column:1/3"><b>Total Alamat</b><br>${hosts}</div>
-            </div>
-        </div>`;
-    }catch(e){
-        out.innerHTML = '<div class="error">IP IPv6 tidak valid</div>';
+  if(cidrParam){
+    loadFromCIDR(cidrParam);
+  } else {
+    // 2. Random IP/CIDR kalau load pertama
+    let ver = Math.random() > 0.5? 4 : 6;
+    if(ver === 4){
+      let ip = `${rand(1,223)}.${rand(0,255)}.${rand(0,255)}.${rand(0,255)}`;
+      let p = rand(8,28);
+      loadFromCIDR(ip+'/'+p);
+    } else {
+      let ip = '2001:db8:'+rand(0,65535).toString(16)+'::';
+      let p = rand(48,64);
+      loadFromCIDR(ip+'/'+p);
     }
+  }
+
+  // 3. Event listener semua input
+  document.getElementById('ip').oninput = () => onChange('ip');
+  document.getElementById('cidr').oninput = () => onChange('cidr');
+  document.getElementById('netmask').oninput = () => onChange('netmask');
+  document.getElementById('hosts').oninput = () => onChange('hosts');
+}
+
+function rand(min,max){return Math.floor(Math.random()*(max-min+1))+min}
+
+function loadFromCIDR(str){
+  if(!str.includes('/')) return;
+  let [ip,p] = str.split('/');
+  document.getElementById('ip').value = ip;
+  document.getElementById('cidr').value = p;
+  updateAll(ip, parseInt(p));
+}
+
+function onChange(field){
+  if(updating) return;
+  updating = true;
+
+  let ip = document.getElementById('ip').value.trim();
+  let p = parseInt(document.getElementById('cidr').value);
+  let mask = document.getElementById('netmask').value.trim();
+  let hosts = parseInt(document.getElementById('hosts').value);
+
+  if(field === 'cidr' &&!isNaN(p)) updateAll(ip,p);
+  else if(field === 'netmask' && mask) {
+    let p2 = maskToCIDR(mask);
+    if(p2!== null){ document.getElementById('cidr').value = p2; updateAll(ip,p2) }
+  }
+  else if(field === 'hosts' &&!isNaN(hosts) && ip.includes('.')){
+    let p2 = 32 - Math.ceil(Math.log2(hosts+2));
+    if(p2>=0 && p2<=32){ document.getElementById('cidr').value = p2; updateAll(ip,p2) }
+  }
+  else if(field === 'ip'){
+    let p2 = parseInt(document.getElementById('cidr').value) || (ip.includes(':')?64:24);
+    updateAll(ip,p2);
+  }
+
+  updating = false;
+}
+
+function updateAll(ip,p){
+  if(!ip || isNaN(p)) return;
+  if(ip.includes(':')) calcIPv6(ip,p);
+  else calcIPv4(ip,p);
+  updateShareLink();
+}
+
+function calcIPv4(ip,p){
+  let parts = ip.split('.').map(Number);
+  if(parts.length!=4 || parts.some(n=>n<0||n>255||isNaN(n))){showErr('IP IPv4 invalid');return}
+  if(p<0||p>32){showErr('Prefix 0-32');return}
+
+  let ipInt = parts[0]*16777216 + parts[1]*65536 + parts[2]*256 + parts[3];
+  let mask = p===0? 0 : (0xffffffff << (32-p)) >>> 0;
+  let network = ipInt & mask;
+  let broadcast = network | (~mask >>> 0);
+  let hosts = p>=31? (p===31?2:1) : Math.pow(2,32-p)-2;
+  let first = p>=31? network : network+1;
+  let last = p>=31? broadcast : broadcast-1;
+
+  function toIP(n){return [(n/16777216)&255,(n/65536)&255,(n/256)&255,n&255].join('.')}
+
+  document.getElementById('netmask').value = toIP(mask);
+  document.getElementById('hosts').value = hosts;
+
+  document.getElementById('out').innerHTML = `
+  <div class="result">
+    <div class="grid">
+      <div><b>Network</b><br>${toIP(network)}/${p}</div>
+      <div><b>Broadcast</b><br>${toIP(broadcast)}</div>
+      <div><b>Range IP</b><br>${toIP(first)} - ${toIP(last)}</div>
+      <div><b>Wildcard</b><br>${toIP(~mask>>>0)}</div>
+    </div>
+  </div>`;
+}
+
+function calcIPv6(ip,p){
+  try{
+    let full = expandIPv6(ip);
+    let bin = ipv6ToBin(full);
+    let netBin = bin.slice(0,p) + '0'.repeat(128-p);
+    let firstBin = bin.slice(0,p) + '0'.repeat(128-p);
+    let lastBin = bin.slice(0,p) + '1'.repeat(128-p);
+
+    let network = binToIPv6(netBin);
+    let first = binToIPv6(firstBin);
+    let last = binToIPv6(lastBin);
+    let hosts = p>=64? '2^'+(128-p) : (BigInt(2)**BigInt(128-p)).toString();
+
+    document.getElementById('netmask').value = cidrToMaskIPv6(p);
+    document.getElementById('hosts').value = hosts.includes('^')? 0 : hosts;
+
+    document.getElementById('out').innerHTML = `
+    <div class="result">
+      <div class="grid">
+        <div><b>Network</b><br>${network}/${p}</div>
+        <div><b>Range IP</b><br>${first} - ${last}</div>
+        <div style="grid-column:1/3"><b>Total Alamat</b><br>${hosts}</div>
+      </div>
+    </div>`;
+  }catch(e){showErr('IP IPv6 invalid')}
+}
+
+function maskToCIDR(mask){
+  let parts = mask.split('.').map(Number);
+  if(parts.length!=4) return null;
+  let bin = parts.map(n=>n.toString(2).padStart(8,'0')).join('');
+  let p = bin.indexOf('0');
+  return p===-1?32:p;
+}
+
+function cidrToMaskIPv6(p){
+  let bin = '1'.repeat(p)+'0'.repeat(128-p);
+  let parts = [];
+  for(let i=0;i<128;i+=16) parts.push(parseInt(bin.slice(i,i+16),2).toString(16));
+  return parts.join(':');
 }
 
 function expandIPv6(ip){
-    if(ip==='::') return '0000:0000:0000:0000:0000:0000:0000:0000';
-    let parts = ip.split('::');
-    let left = parts[0]?parts[0].split(':'):[];
-    let right = parts[1]?parts[1].split(':'):[];
-    let missing = 8 - left.length - right.length;
-    let zeros = Array(missing).fill('0000');
-    return [...left,...zeros,...right].map(h=>h.padStart(4,'0')).join(':');
+  if(ip==='::') return '0000:0000:0000:0000:0000:0000:0000:0000';
+  let parts = ip.split('::');
+  let left = parts[0]?parts[0].split(':'):[];
+  let right = parts[1]?parts[1].split(':'):[];
+  let missing = 8 - left.length - right.length;
+  let zeros = Array(missing).fill('0000');
+  return [...left,...zeros,...right].map(h=>h.padStart(4,'0')).join(':');
 }
 
 function ipv6ToBin(ip){
-    return ip.split(':').map(h=>parseInt(h,16).toString(2).padStart(16,'0')).join('');
+  return ip.split(':').map(h=>parseInt(h,16).toString(2).padStart(16,'0')).join('');
 }
 
 function binToIPv6(bin){
-    let parts = [];
-    for(let i=0;i<128;i+=16){
-        parts.push(parseInt(bin.slice(i,i+16),2).toString(16));
-    }
-    return parts.join(':').replace(/(^|:)0(:0)+(:|$)/, '::').replace(/:{3,}/, '::');
+  let parts = [];
+  for(let i=0;i<128;i+=16) parts.push(parseInt(bin.slice(i,i+16),2).toString(16));
+  return parts.join(':').replace(/(^|:)0(:0)+(:|$)/, '::').replace(/:{3,}/, '::');
 }
+
+function updateShareLink(){
+  let ip = document.getElementById('ip').value;
+  let p = document.getElementById('cidr').value;
+  let url = location.origin + location.pathname + '?cidr=' + encodeURIComponent(ip+'/'+p);
+  document.getElementById('shareLink').value = url;
+}
+
+function copyLink(){
+  let link = document.getElementById('shareLink');
+  link.select();
+  document.execCommand('copy');
+  alert('Link disalin!');
+}
+
+function showErr(msg){
+  document.getElementById('out').innerHTML = `<div class="error">${msg}</div>`;
+}
+
+init();
 </script>
 </body>
 </html>
