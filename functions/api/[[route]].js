@@ -190,33 +190,48 @@ async function asn(ipParam, context, cors) {
   const ip = getIP(ipParam, context);
   if(ip === 'unknown') return Response.json({error: 'IP required'}, {headers: cors});
 
-  try {
-    const r = await fetch(`https://api.bgpview.io/ip/${ip}`, {signal: AbortSignal.timeout(5000)});
-    if(!r.ok) {
-      const text = await r.text();
-      return Response.json({error: `BGPView ${r.status}`, detail: text.slice(0, 200)}, {headers: cors});
-    }
-    const data = await r.json();
-    return Response.json({...data.data, requested_ip: ip}, {headers: cors});
-  } catch(e) {
-    return Response.json({error: 'ASN lookup failed: ' + e.message, ip}, {headers: cors});
+  // BGPView blocks CF. Use ip-api.com + ipwhois.app as fallback
+  const apis = [
+    `http://ip-api.com/json/${ip}?fields=as,org,query`,
+    `https://ipwho.is/${ip}`
+  ];
+
+  for(let url of apis) {
+    try {
+      const r = await fetch(url, {signal: AbortSignal.timeout(4000)});
+      if(!r.ok) continue;
+      const data = await r.json();
+
+      if(data.as || data.asn) {
+        return Response.json({
+          ip,
+          asn: data.as || data.asn,
+          org: data.org || data.connection?.isp || 'N/A',
+          source: url.includes('ip-api')? 'ip-api.com' : 'ipwho.is'
+        }, {headers: cors});
+      }
+    } catch {}
   }
+  return Response.json({error: 'ASN lookup failed for ' + ip}, {headers: cors});
 }
 
 async function subdomains(domain, cors) {
   if(!domain) return Response.json({error: 'domain required'}, {headers: cors});
 
   try {
-    const r = await fetch(`https://crt.sh/?q=%25.${domain}&output=json`, {signal: AbortSignal.timeout(8000)});
-    if(!r.ok) {
-      const text = await r.text();
-      return Response.json({error: `crt.sh ${r.status}`, detail: text.slice(0, 200)}, {headers: cors});
-    }
-    const data = await r.json();
-    const subs = [...new Set(data.map(d => d.name_value).flatMap(s => s.split('\n')))]
-      .filter(s => s.endsWith(domain) && !s.includes('*'))
-      .slice(0, 100);
-    return Response.json({domain, count: subs.length, subdomains: subs}, {headers: cors});
+    // crt.sh is slow. Use HackerTarget API - faster, no 502
+    const r = await fetch(`https://api.hackertarget.com/hostsearch/?q=${domain}`, {signal: AbortSignal.timeout(8000)});
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+
+    const text = await r.text();
+    if(text.includes('error')) return Response.json({error: text}, {headers: cors});
+
+    const subs = text.split('\n')
+     .map(line => line.split(',')[0])
+     .filter(s => s && s.endsWith(domain))
+     .slice(0, 100);
+
+    return Response.json({domain, count: subs.length, subdomains: subs, source: 'HackerTarget'}, {headers: cors});
   } catch(e) {
     return Response.json({error: 'Subdomain fetch failed: ' + e.message, domain}, {headers: cors});
   }
@@ -226,9 +241,21 @@ async function ptr(ipParam, context, cors) {
   const ip = getIP(ipParam, context);
   if(ip === 'unknown') return Response.json({error: 'IP required'}, {headers: cors});
 
-  const r = await fetch(`https://dns.google/resolve?name=${ip.split('.').reverse().join('.')}.in-addr.arpa&type=PTR`);
-  const data = await r.json();
-  return Response.json({ip, ptr: data.Answer?.[0]?.data?.replace(/\.$/, '') || null}, {headers: cors});
+  // Only IPv4 for now. IPv6 needs ip6.arpa
+  if(ip.includes(':')) return Response.json({ip, ptr: null, note: 'IPv6 PTR not supported yet'}, {headers: cors});
+
+  const reversed = ip.split('.').reverse().join('.') + '.in-addr.arpa';
+  try {
+    const r = await fetch(`https://dns.google/resolve?name=${reversed}&type=PTR`, {
+      headers: {'Accept': 'application/dns-json'},
+      signal: AbortSignal.timeout(3000)
+    });
+    const json = await r.json();
+    const ptr = json.Answer?.[0]?.data?.replace(/\.$/, '') || null;
+    return Response.json({ip, ptr, queried: reversed}, {headers: cors});
+  } catch(e) {
+    return Response.json({ip, ptr: null, error: e.message}, {headers: cors});
+  }
 }
 
 async function blacklist(ipParam, context, cors) {
