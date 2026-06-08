@@ -253,7 +253,7 @@ async function ptr(ipParam, context, cors) {
       const json = await r.json();
       const ptrs = json.Answer?.filter(a => a.type === 12).map(a => a.data.replace(/\.$/, '')) || [];
       if(ptrs.length) {
-        return Response.json({ip, source: 'DNS', ptr_count: ptrs.length, ptr: ptrs, status: 'found'}, {headers: cors});
+        return pretty({ip, source: 'DNS', ptr_count: ptrs.length, ptr: ptrs, status: 'found'}, {headers: cors});
       }
     } catch {}
   }
@@ -263,7 +263,7 @@ async function ptr(ipParam, context, cors) {
     const r = await fetch(`http://ip-api.com/json/${ip}?fields=reverse,query,status`, {signal: AbortSignal.timeout(3000)});
     const data = await r.json();
     if(data.status === 'success' && data.reverse && data.reverse !== ip) {
-      return Response.json({
+      return pretty({
         ip, 
         source: 'ip-api.com', 
         ptr_count: 1, 
@@ -274,7 +274,7 @@ async function ptr(ipParam, context, cors) {
     }
   } catch {}
 
-  return Response.json({ip, source: 'none', ptr_count: 0, ptr: [], status: 'no_record'}, {headers: cors});
+  return pretty({ip, source: 'none', ptr_count: 0, ptr: [], status: 'no_record'}, {headers: cors});
 }
 
 async function blacklist(ipParam, context, cors) {
