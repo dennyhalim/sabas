@@ -164,14 +164,6 @@ async function webHealth(url, cors) {
   }, {headers: cors});
 }
 
-async function subdomains(domain, cors) {
-  if(!domain) return Response.json({error: 'domain required'}, {headers: cors});
-  const r = await fetch(`https://crt.sh/?q=%25.${domain}&output=json`);
-  const data = await r.json();
-  const subs = [...new Set(data.map(d => d.name_value).flatMap(s => s.split('\n')))].filter(s => s.endsWith(domain));
-  return Response.json({domain, subdomains: subs.slice(0, 100)}, {headers: cors});
-}
-
 async function geo(context, ipParam, cors) {
   const ip = getIP(ipParam, context);
   const req = context.request;
@@ -198,9 +190,36 @@ async function asn(ipParam, context, cors) {
   const ip = getIP(ipParam, context);
   if(ip === 'unknown') return Response.json({error: 'IP required'}, {headers: cors});
 
-  const r = await fetch(`https://api.bgpview.io/ip/${ip}`);
-  const data = await r.json();
-  return Response.json({...data.data, requested_ip: ip}, {headers: cors});
+  try {
+    const r = await fetch(`https://api.bgpview.io/ip/${ip}`, {signal: AbortSignal.timeout(5000)});
+    if(!r.ok) {
+      const text = await r.text();
+      return Response.json({error: `BGPView ${r.status}`, detail: text.slice(0, 200)}, {headers: cors});
+    }
+    const data = await r.json();
+    return Response.json({...data.data, requested_ip: ip}, {headers: cors});
+  } catch(e) {
+    return Response.json({error: 'ASN lookup failed: ' + e.message, ip}, {headers: cors});
+  }
+}
+
+async function subdomains(domain, cors) {
+  if(!domain) return Response.json({error: 'domain required'}, {headers: cors});
+
+  try {
+    const r = await fetch(`https://crt.sh/?q=%25.${domain}&output=json`, {signal: AbortSignal.timeout(8000)});
+    if(!r.ok) {
+      const text = await r.text();
+      return Response.json({error: `crt.sh ${r.status}`, detail: text.slice(0, 200)}, {headers: cors});
+    }
+    const data = await r.json();
+    const subs = [...new Set(data.map(d => d.name_value).flatMap(s => s.split('\n')))]
+      .filter(s => s.endsWith(domain) && !s.includes('*'))
+      .slice(0, 100);
+    return Response.json({domain, count: subs.length, subdomains: subs}, {headers: cors});
+  } catch(e) {
+    return Response.json({error: 'Subdomain fetch failed: ' + e.message, domain}, {headers: cors});
+  }
 }
 
 async function ptr(ipParam, context, cors) {
