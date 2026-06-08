@@ -7,6 +7,7 @@ export async function onRequest(context) {
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type'
   };
+  const pretty = (data) => new Response(JSON.stringify(data, null, 2), {headers: cors});
   if (context.request.method === 'OPTIONS') return new Response(null, {headers: cors});
 
   try {
@@ -314,18 +315,18 @@ async function blacklist(ipParam, context, cors) {
       if(json.Status === 0 && json.Answer?.[0]?.data) {
         const code = json.Answer[0].data;
         results[list] = {
-          \nstatus: 'LISTED',
+          status: 'LISTED',
           code: code,
           reason: lists[list][code] || 'Unknown listing code'
         };
       } else {
-        results[list] = {\nstatus: 'CLEAN', code: null, reason: 'Not listed'};
+        results[list] = {status: 'CLEAN', code: null, reason: 'Not listed'};
       }
     } catch(e) {
-      results[list] = {\nstatus: 'ERROR', code: null, reason: e.message};
+      results[list] = {status: 'ERROR', code: null, reason: e.message};
     }
   }
-  return Response.json({ip, results}, {headers: cors});
+  return pretty({ip, results}, {headers: cors});
 }
 
 async function bgp(ipParam, context, cors) {
