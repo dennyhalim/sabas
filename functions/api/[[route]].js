@@ -253,6 +253,7 @@ async function blacklist(ipParam, context, cors) {
   if(ip === 'unknown') return new Response(JSON.stringify({error: 'IP required'}, null, 2), {headers: cors});
   const reversed = ip.split('.').reverse().join('.');
   const lists = {
+/*
     'zen.spamhaus.org': {
       '127.0.0.2': 'SBL - Spamhaus Block List',
       '127.0.0.3': 'CSS - Spamhaus Exploits',
@@ -260,6 +261,7 @@ async function blacklist(ipParam, context, cors) {
       '127.0.0.10': 'SBL + CSS',
       '127.0.0.11': 'SBL + CSS'
     },
+*/
     'bl.spamcop.net': {'127.0.0.2': 'SpamCop listed'},
     'b.barracudacentral.org': {},
     'psbl.surriel.com': {},
