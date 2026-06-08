@@ -241,8 +241,7 @@ async function ptr(ipParam, context, cors) {
   const ip = getIP(ipParam, context);
   if(ip === 'unknown') return Response.json({error: 'IP required'}, {headers: cors});
 
-  // IPv4 only. IPv6 uses ip6.arpa nibble format
-  if(ip.includes(':')) return Response.json({ip, ptr: null, note: 'IPv6 PTR not supported yet'}, {headers: cors});
+  if(ip.includes(':')) return Response.json({ip, ptr: [], note: 'IPv6 PTR not supported yet'}, {headers: cors});
 
   const reversed = ip.split('.').reverse().join('.') + '.in-addr.arpa';
   try {
@@ -252,17 +251,18 @@ async function ptr(ipParam, context, cors) {
     });
     const json = await r.json();
     
-    // Real PTR is in Answer[0].data, not the query name
-    const ptr = json.Answer?.[0]?.data?.replace(/\.$/, '') || null;
+    // Get ALL PTR records, not just first one
+    const ptrs = json.Answer?.filter(a => a.type === 12).map(a => a.data.replace(/\.$/, '')) || [];
     
     return Response.json({
       ip,
-      ptr,
       query: reversed,
-      status: json.Status === 0 ? (ptr ? 'found' : 'no_record') : 'error'
+      ptr_count: ptrs.length,
+      ptr: ptrs,
+      status: json.Status === 0 ? (ptrs.length ? 'found' : 'no_record') : 'dns_error'
     }, {headers: cors});
   } catch(e) {
-    return Response.json({ip, ptr: null, query: reversed, error: e.message}, {headers: cors});
+    return Response.json({ip, query: reversed, ptr: [], error: e.message}, {headers: cors});
   }
 }
 
