@@ -12,6 +12,7 @@ export async function onRequest(context) {
 
   try {
     switch(route) {
+      case 'geo': return await geo(context, cors);
       case 'ping': return await ping(params.get('host'), cors);
       case 'trace': return await trace(params.get('host'), cors);
       case 'bgp': return await bgp(params.get('ip'), cors);
@@ -29,6 +30,25 @@ export async function onRequest(context) {
   } catch(e) {
     return Response.json({error: e.message}, {status: 500, headers: cors});
   }
+}
+
+async function geo(context, cors) {
+  const req = context.request;
+  const ip = req.headers.get('CF-Connecting-IP') || 'unknown';
+  const country = req.cf?.country || 'XX';
+  const city = req.cf?.city || 'Unknown';
+  const asn = req.cf?.asn || 0;
+  const timezone = req.cf?.timezone || 'UTC';
+  
+  return Response.json({
+    ip,
+    country,
+    city,
+    asn,
+    timezone,
+    colo: req.cf?.colo,
+    tls: req.cf?.tlsVersion
+  }, {headers: cors});
 }
 
 // 1. PING - TCP handshake timing instead of ICMP
