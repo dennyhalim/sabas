@@ -241,20 +241,28 @@ async function ptr(ipParam, context, cors) {
   const ip = getIP(ipParam, context);
   if(ip === 'unknown') return Response.json({error: 'IP required'}, {headers: cors});
 
-  // Only IPv4 for now. IPv6 needs ip6.arpa
+  // IPv4 only. IPv6 uses ip6.arpa nibble format
   if(ip.includes(':')) return Response.json({ip, ptr: null, note: 'IPv6 PTR not supported yet'}, {headers: cors});
 
   const reversed = ip.split('.').reverse().join('.') + '.in-addr.arpa';
   try {
     const r = await fetch(`https://dns.google/resolve?name=${reversed}&type=PTR`, {
       headers: {'Accept': 'application/dns-json'},
-      signal: AbortSignal.timeout(3000)
+      signal: AbortSignal.timeout(4000)
     });
     const json = await r.json();
+    
+    // Real PTR is in Answer[0].data, not the query name
     const ptr = json.Answer?.[0]?.data?.replace(/\.$/, '') || null;
-    return Response.json({ip, ptr, queried: reversed}, {headers: cors});
+    
+    return Response.json({
+      ip,
+      ptr,
+      query: reversed,
+      status: json.Status === 0 ? (ptr ? 'found' : 'no_record') : 'error'
+    }, {headers: cors});
   } catch(e) {
-    return Response.json({ip, ptr: null, error: e.message}, {headers: cors});
+    return Response.json({ip, ptr: null, query: reversed, error: e.message}, {headers: cors});
   }
 }
 
