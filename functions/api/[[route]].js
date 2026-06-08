@@ -7,7 +7,6 @@ export async function onRequest(context) {
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type'
   };
-  const pretty = (data) => new Response(JSON.stringify(data, null, 2), {headers: cors});
   if (context.request.method === 'OPTIONS') return new Response(null, {headers: cors});
 
   try {
@@ -328,7 +327,7 @@ async function blacklist(ipParam, context, cors) {
       results[list] = {status: 'ERROR', code: null, reason: e.message};
     }
   }
-  return pretty({ip, results}, {headers: cors});
+  return Response.json({ip, results}, {headers: cors});
 }
 
 async function bgp(ipParam, context, cors) {
