@@ -294,7 +294,7 @@ async function blacklist(ipParam, context, cors) {
     },
     'all.s5h.net' : {},
     'dnsbl.spfbl.net' : {},
-    'cbl.abuseat.org' : {},
+    'dnsbl-1.uceprotect.net' : {},
     'dnsbl.sorbs.net' : {},
     'combined.njabl.org' : {},
     'combined.abuse.ch' : {},
