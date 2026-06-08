@@ -2,7 +2,9 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>IPv4 / IPv6 CIDR Calculator</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CIDR Calculator</title>
+
 <style>
 body{
     font-family:Arial,sans-serif;
@@ -10,19 +12,29 @@ body{
     margin:20px auto;
     padding:20px;
 }
+h2{
+    margin-top:0;
+}
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+td{
+    padding:6px;
+}
 input{
     width:100%;
-    padding:10px;
-    font-size:16px;
+    padding:8px;
+    box-sizing:border-box;
 }
 button{
-    margin-top:10px;
-    padding:10px 20px;
+    padding:8px 16px;
+    margin-right:8px;
 }
 pre{
-    background:#f4f4f4;
+    background:#f5f5f5;
     padding:15px;
-    white-space:pre-wrap;
+    overflow:auto;
 }
 </style>
 </head>
@@ -30,16 +42,46 @@ pre{
 
 <h2>IPv4 / IPv6 CIDR Calculator</h2>
 
-<input id="cidr" placeholder="192.168.1.10/24 or 2001:db8::1/64">
-<button onclick="calc()">Calculate</button>
+<table>
+<tr>
+<td width="140">IP Address</td>
+<td><input id="ip"></td>
+</tr>
 
-<pre id="out"></pre>
+<tr>
+<td>CIDR</td>
+<td><input id="cidr" type="number"></td>
+</tr>
+
+<tr>
+<td>Netmask</td>
+<td><input id="netmask"></td>
+</tr>
+
+<tr>
+<td>Total Hosts</td>
+<td><input id="hosts"></td>
+</tr>
+</table>
+
+<p>
+<button onclick="copyLink()">Copy Link</button>
+<button onclick="randomNetwork()">Random</button>
+</p>
+
+<pre id="result"></pre>
 
 <script>
 
+const ipInput = document.getElementById("ip");
+const cidrInput = document.getElementById("cidr");
+const maskInput = document.getElementById("netmask");
+const hostsInput = document.getElementById("hosts");
+const result = document.getElementById("result");
+
 function ipv4ToInt(ip){
     return ip.split('.')
-        .reduce((a,v)=>((a<<8)>>>0)+parseInt(v,10),0)>>>0;
+        .reduce((a,v)=>((a<<8)>>>0)+(+v),0)>>>0;
 }
 
 function intToIpv4(n){
@@ -51,148 +93,246 @@ function intToIpv4(n){
     ].join('.');
 }
 
+function cidrToMask(cidr){
+    if(cidr===0) return "0.0.0.0";
+
+    let mask=((0xffffffff<<(32-cidr))>>>0);
+
+    return intToIpv4(mask);
+}
+
+function maskToCIDR(mask){
+    let n=ipv4ToInt(mask);
+    let c=0;
+
+    for(let i=31;i>=0;i--){
+        if((n&(1<<i))!==0) c++;
+        else break;
+    }
+
+    return c;
+}
+
+function randomNetwork(){
+
+    ipInput.value=
+        "10."+
+        Math.floor(Math.random()*256)+"."+
+        Math.floor(Math.random()*256)+".0";
+
+    cidrInput.value=
+        8+Math.floor(Math.random()*23);
+
+    calculate();
+}
+
 function expandIPv6(ip){
-    let parts = ip.split("::");
 
-    let left = parts[0] ? parts[0].split(":") : [];
-    let right = parts[1] ? parts[1].split(":") : [];
+    let parts=ip.split("::");
 
-    let missing = 8 - (left.length + right.length);
+    let left=parts[0] ? parts[0].split(":") : [];
+    let right=parts[1] ? parts[1].split(":") : [];
 
-    let groups = [
+    let missing=8-(left.length+right.length);
+
+    return [
         ...left,
         ...Array(missing).fill("0"),
         ...right
-    ];
-
-    return groups.map(x => x.padStart(4,'0'));
+    ].map(v=>v.padStart(4,"0"));
 }
 
 function ipv6ToBigInt(ip){
-    let groups = expandIPv6(ip);
-    let hex = groups.join('');
-    return BigInt('0x'+hex);
+
+    let hex=expandIPv6(ip).join("");
+
+    return BigInt("0x"+hex);
 }
 
 function bigIntToIPv6(n){
-    let hex = n.toString(16).padStart(32,'0');
-    let groups = [];
+
+    let hex=n.toString(16).padStart(32,"0");
+
+    let groups=[];
 
     for(let i=0;i<32;i+=4)
         groups.push(hex.slice(i,i+4));
 
-    return groups.join(':')
-        .replace(/\b0{1,3}/g,'')
-        .replace(/(^|:)0(:0)+(:|$)/,'::');
+    return groups.join(":");
 }
 
-function calcIPv4(ip,prefix){
+function calculate(){
 
-    let ipInt = ipv4ToInt(ip);
+    let ip=ipInput.value.trim();
 
-    let mask =
-        prefix === 0
+    if(!ip) return;
+
+    if(ip.includes(":")){
+        calculateIPv6();
+    }else{
+        calculateIPv4();
+    }
+}
+
+function calculateIPv4(){
+
+    let ip=ipInput.value.trim();
+    let cidr=parseInt(cidrInput.value);
+
+    if(isNaN(cidr) || cidr<0 || cidr>32)
+        return;
+
+    maskInput.value=cidrToMask(cidr);
+
+    let hostCount=Math.pow(2,32-cidr);
+
+    hostsInput.value=hostCount;
+
+    let ipInt=ipv4ToInt(ip);
+
+    let mask=cidr===0
         ? 0
-        : ((0xffffffff << (32-prefix)) >>> 0);
+        : ((0xffffffff<<(32-cidr))>>>0);
 
-    let network = ipInt & mask;
-    let broadcast = network | (~mask >>> 0);
+    let network=ipInt & mask;
 
-    let hosts = Math.pow(2,32-prefix);
+    let broadcast=network | (~mask>>>0);
 
-    let usable =
-        prefix >= 31
-        ? hosts
-        : Math.max(hosts-2,0);
-
-    let first =
-        prefix >= 31
+    let first=cidr>=31
         ? network
-        : network + 1;
+        : network+1;
 
-    let last =
-        prefix >= 31
+    let last=cidr>=31
         ? broadcast
-        : broadcast - 1;
+        : broadcast-1;
 
-    return `
-Version      : IPv4
-CIDR         : ${ip}/${prefix}
+    result.textContent=
+`Version      : IPv4
+CIDR         : ${ip}/${cidr}
 Network      : ${intToIpv4(network)}
 Broadcast    : ${intToIpv4(broadcast)}
 First Host   : ${intToIpv4(first)}
 Last Host    : ${intToIpv4(last)}
-Addresses    : ${hosts}
-Usable Hosts : ${usable}
+Addresses    : ${hostCount}
+Usable Hosts : ${cidr>=31 ? hostCount : Math.max(hostCount-2,0)}
 `;
 }
 
-function calcIPv6(ip,prefix){
+function calculateIPv6(){
 
-    let ipBig = ipv6ToBigInt(ip);
+    let ip=ipInput.value.trim();
+    let cidr=parseInt(cidrInput.value);
 
-    let bits = 128n;
+    maskInput.value="N/A";
 
-    let mask =
-        prefix === 0
+    let ipBig=ipv6ToBigInt(ip);
+
+    let total=
+        1n<<(128n-BigInt(cidr));
+
+    hostsInput.value=total.toString();
+
+    let mask=
+        cidr===0
         ? 0n
-        : ((1n<<bits)-1n) ^
-          ((1n<<(bits-BigInt(prefix)))-1n);
+        : ((1n<<128n)-1n) ^
+          ((1n<<(128n-BigInt(cidr)))-1n);
 
-    let network = ipBig & mask;
+    let network=ipBig & mask;
 
-    let total =
-        1n << (128n-BigInt(prefix));
+    let last=network+total-1n;
 
-    let last =
-        network + total - 1n;
-
-    return `
-Version      : IPv6
-CIDR         : ${ip}/${prefix}
+    result.textContent=
+`Version      : IPv6
+CIDR         : ${ip}/${cidr}
 Network      : ${bigIntToIPv6(network)}
 Last Address : ${bigIntToIPv6(last)}
-Addresses    : ${total.toString()}
+Addresses    : ${total}
 `;
 }
 
-function calc(){
+cidrInput.addEventListener("input",calculate);
 
-    let value = document.getElementById("cidr").value.trim();
+ipInput.addEventListener("input",calculate);
+
+maskInput.addEventListener("change",()=>{
+
+    let ip=ipInput.value.trim();
+
+    if(ip.includes(":"))
+        return;
+
+    let cidr=maskToCIDR(maskInput.value.trim());
+
+    cidrInput.value=cidr;
+
+    calculate();
+});
+
+hostsInput.addEventListener("change",()=>{
+
+    let ip=ipInput.value.trim();
+
+    if(ip.includes(":"))
+        return;
+
+    let hosts=parseInt(hostsInput.value);
+
+    if(!hosts || hosts<1)
+        return;
+
+    let cidr=
+        32-Math.round(Math.log2(hosts));
+
+    if(cidr<0) cidr=0;
+    if(cidr>32) cidr=32;
+
+    cidrInput.value=cidr;
+
+    calculate();
+});
+
+async function copyLink(){
+
+    let url=
+        location.origin+
+        location.pathname+
+        "?cidr="+
+        encodeURIComponent(
+            ipInput.value+
+            "/"+
+            cidrInput.value
+        );
 
     try{
-
-        let [ip,prefixStr] = value.split('/');
-
-        if(!ip || prefixStr===undefined)
-            throw "Invalid CIDR";
-
-        let prefix = parseInt(prefixStr,10);
-
-        let result;
-
-        if(ip.includes(':')){
-
-            if(prefix<0 || prefix>128)
-                throw "Invalid IPv6 prefix";
-
-            result = calcIPv6(ip,prefix);
-
-        }else{
-
-            if(prefix<0 || prefix>32)
-                throw "Invalid IPv4 prefix";
-
-            result = calcIPv4(ip,prefix);
-        }
-
-        document.getElementById("out").textContent = result;
-
+        await navigator.clipboard.writeText(url);
+        alert("Link copied");
     }catch(e){
-        document.getElementById("out").textContent =
-            "Error: " + e;
+        prompt("Copy:",url);
     }
 }
+
+(function(){
+
+    let p=new URLSearchParams(location.search);
+
+    let cidrParam=p.get("cidr");
+
+    if(cidrParam){
+
+        let parts=cidrParam.split("/");
+
+        ipInput.value=parts[0];
+        cidrInput.value=parts[1];
+
+        calculate();
+
+    }else{
+
+        randomNetwork();
+    }
+
+})();
 
 </script>
 
