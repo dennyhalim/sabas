@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cloudflare Network Tools</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {theme:{extend:{colors:{bg:'#0f172a',card:'#1e293b'}}}}
+</script>
+</head>
+<body class="bg-bg text-slate-200 min-h-screen">
+<div class="max-w-6xl mx-auto p-6">
+  <h1 class="text-3xl font-bold text-sky-400 mb-2">Cloudflare Network Tools</h1>
+  <p class="text-slate-400 mb-6">All tools run on Cloudflare Pages Functions. 100% serverless, no backend to manage.</p>
+
+  <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <!-- Ping -->
+    <div class="bg-card p-4 rounded-xl border-slate-700">
+      <h3 class="font-semibold mb-2">Ping</h3>
+      <input id="pingHost" class="w-full p-2 rounded bg-slate-800 border-slate-600 mb-2" placeholder="google.com">
+      <button onclick="run('ping', {host: pingHost.value})" class="w-full bg-sky-600 hover:bg-sky-500 p-2 rounded font-semibold">Run</button>
+      <pre id="pingOut" class="mt-3 text-xs overflow-x-auto"></pre>
+    </div>
+
+    <!-- Port Check -->
+    <div class="bg-card p-4 rounded-xl border-slate-700">
+      <h3 class="font-semibold mb-2">Port Check</h3>
+      <input id="portHost" class="w-full p-2 rounded bg-slate-800 border-slate-600 mb-1" placeholder="google.com">
+      <input id="portNum" class="w-full p-2 rounded bg-slate-800 border-slate-600 mb-2" placeholder="443">
+      <button onclick="run('port', {host: portHost.value, port: portNum.value})" class="w-full bg-sky-600 hover:bg-sky-500 p-2 rounded font-semibold">Check</button>
+      <pre id="portOut" class="mt-3 text-xs overflow-x-auto"></pre>
+    </div>
+
+    <!-- DNS Propagation -->
+    <div class="bg-card p-4 rounded-xl border-slate-700">
+      <h3 class="font-semibold mb-2">DNS Propagation</h3>
+      <input id="dnsDomain" class="w-full p-2 rounded bg-slate-800 border-slate-600 mb-1" placeholder="example.com">
+      <select id="dnsType" class="w-full p-2 rounded bg-slate-800 border-slate-600 mb-2">
+        <option>A</option><option>AAAA</option><option>MX</option><option>TXT</option><option>NS</option>
+      </select>
+      <button onclick="run('dns', {domain: dnsDomain.value, type: dnsType.value})" class="w-full bg-sky-600 hover:bg-sky-500 p-2 rounded font-semibold">Check</button>
+      <pre id="dnsOut" class="mt-3 text-xs overflow-x-auto"></pre>
+    </div>
+
+    <!-- WHOIS -->
+    <div class="bg-card p-4 rounded-xl border-slate-700">
+      <h3 class="font-semibold mb-2">WHOIS</h3>
+      <input id="whoisDomain" class="w-full p-2 rounded bg-slate-800 border-slate-600 mb-2" placeholder="cloudflare.com">
+      <button onclick="run('whois', {domain: whoisDomain.value})" class="w-full bg-sky-600 hover:bg-sky-500 p-2 rounded font-semibold">Lookup</button>
+      <pre id="whoisOut" class="mt-3 text-xs overflow-x-auto"></pre>
+    </div>
+
+    <!-- Mail Health -->
+    <div class="bg-card p-4 rounded-xl border-slate-700">
+      <h3 class="font-semibold mb-2">Mail Server Health</h3>
+      <input id="mailDomain" class="w-full p-2 rounded bg-slate-800 border-slate-600 mb-2" placeholder="yourdomain.com">
+      <button onclick="run('mail', {domain: mailDomain.value})" class="w-full bg-sky-600 hover:bg-sky-500 p-2 rounded font-semibold">Scan</button>
+      <pre id="mailOut" class="mt-3 text-xs overflow-x-auto"></pre>
+    </div>
+
+    <!-- Web Health -->
+    <div class="bg-card p-4 rounded-xl border-slate-700">
+      <h3 class="font-semibold mb-2">Web Security Headers</h3>
+      <input id="webUrl" class="w-full p-2 rounded bg-slate-800 border-slate-600 mb-2" placeholder="example.com">
+      <button onclick="run('web', {url: webUrl.value})" class="w-full bg-sky-600 hover:bg-sky-500 p-2 rounded font-semibold">Scan</button>
+      <pre id="webOut" class="mt-3 text-xs overflow-x-auto"></pre>
+    </div>
+
+    <!-- Subdomains -->
+    <div class="bg-card p-4 rounded-xl border-slate-700 md:col-span-2">
+      <h3 class="font-semibold mb-2">Subdomain Discovery</h3>
+      <input id="subDomain" class="w-full p-2 rounded bg-slate-800 border-slate-600 mb-2" placeholder="example.com">
+      <button onclick="run('subdomains', {domain: subDomain.value})" class="w-full bg-sky-600 hover:bg-sky-500 p-2 rounded font-semibold">Find</button>
+      <pre id="subdomainsOut" class="mt-3 text-xs overflow-x-auto max-h-60"></pre>
+    </div>
+
+    <!-- ASN -->
+    <div class="bg-card p-4 rounded-xl border-slate-700">
+      <h3 class="font-semibold mb-2">ASN Lookup</h3>
+      <input id="asnIp" class="w-full p-2 rounded bg-slate-800 border-slate-600 mb-2" placeholder="1.1.1.1">
+      <button onclick="run('asn', {ip: asnIp.value})" class="w-full bg-sky-600 hover:bg-sky-500 p-2 rounded font-semibold">Lookup</button>
+      <pre id="asnOut" class="mt-3 text-xs overflow-x-auto"></pre>
+    </div>
+  </div>
+</div>
+
+<script>
+async function run(tool, params) {
+  const out = document.getElementById(tool + 'Out');
+  out.textContent = 'Loading...';
+  const query = new URLSearchParams(params).toString();
+  try {
+    const res = await fetch(`/api/${tool}?${query}`);
+    const json = await res.json();
+    out.textContent = JSON.stringify(json, null, 2);
+  } catch(e) {
+    out.textContent = 'Error: ' + e.message;
+  }
+}
+</script>
+</body>
+</html>
