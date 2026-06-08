@@ -91,7 +91,7 @@ async function run(tool, params) {
   out.textContent = 'Loading...';
   const query = new URLSearchParams(params).toString();
   try {
-    const res = await fetch(`/api/${tool}?${query}`);
+    const res = await fetch(`/api/netcheck?${query}`);
     const json = await res.json();
     out.textContent = JSON.stringify(json, null, 2);
   } catch(e) {
