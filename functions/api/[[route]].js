@@ -11,7 +11,7 @@ export default {
       'Content-Type': 'application/json'
     };
 
-    const pretty = (data) => new Response(JSON.stringify(data, null, 2), {headers: cors});
+    const pretty = (data, h = cors) => new Response(JSON.stringify(data, null, 2), {headers: h});
 
     if (request.method === 'OPTIONS') {
       return new Response(null, {headers: cors});
@@ -19,28 +19,28 @@ export default {
 
     try {
       if (path === '/api/asn' || path === '/api/asn/') {
-        return asn(params.get('ip'), request, cors, pretty);
+        return asn(params.get('ip'), request, pretty);
       }
       if (path === '/api/subdomains' || path === '/api/subdomains/') {
-        return subdomains(params.get('domain'), cors, pretty);
+        return subdomains(params.get('domain'), pretty);
       }
       if (path === '/api/dns' || path === '/api/dns/') {
-        return dnsProp(params.get('domain'), params.get('type') || 'A', cors, pretty);
+        return dnsProp(params.get('domain'), params.get('type') || 'A', pretty);
       }
       if (path === '/api/ptr' || path === '/api/ptr/') {
-        return ptr(params.get('ip'), request, cors, pretty);
+        return ptr(params.get('ip'), request, pretty);
       }
       if (path === '/api/rdap' || path === '/api/rdap/') {
-        return rdap(params.get('domain'), cors, pretty);
+        return rdap(params.get('domain'), pretty);
       }
       if (path === '/api/screenshot' || path === '/api/screenshot/') {
-        return screenshot(params.get('url'), cors, pretty);
+        return screenshot(params.get('url'), pretty);
       }
       if (path === '/api/whois' || path === '/api/whois/') {
-        return whois(params.get('domain'), cors, pretty);
+        return whois(params.get('domain'), pretty);
       }
       if (path === '/api/whois_raw' || path === '/api/whois_raw/') {
-        return whoisRaw(params.get('domain'), cors, pretty);
+        return whoisRaw(params.get('domain'), pretty);
       }
 
       return pretty({error: 'Endpoint not found. Use /api/asn, /api/subdomains, /api/dns, /api/ptr, /api/rdap, /api/screenshot, /api/whois, /api/whois_raw'});
@@ -57,12 +57,12 @@ function getIP(ipParam, request) {
   return cfIP || xff?.split(',')[0].trim() || 'unknown';
 }
 
-async function asn(ipParam, request, cors, pretty) {
+async function asn(ipParam, request, pretty) {
   const ip = getIP(ipParam, request);
   if(ip === 'unknown') return pretty({error: 'IP required'});
 
   try {
-    const r = await fetch(`http://ip-api.com/json/${ip}?fields=status,message,query,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,asname`);
+    const r = await fetch(`https://ip-api.com/json/${ip}?fields=status,message,query,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,asname`, {signal: AbortSignal.timeout(5000)});
     const data = await r.json();
     if(data.status === 'fail') return pretty({error: data.message});
     return pretty(data);
@@ -71,10 +71,10 @@ async function asn(ipParam, request, cors, pretty) {
   }
 }
 
-async function subdomains(domain, cors, pretty) {
+async function subdomains(domain, pretty) {
   if(!domain) return pretty({error: 'domain required'});
   try {
-    const r = await fetch(`https://crt.sh/?q=%.${domain}&output=json`);
+    const r = await fetch(`https://crt.sh/?q=%.${domain}&output=json`, {signal: AbortSignal.timeout(8000)});
     const data = await r.json();
     const subs = [...new Set(data.map(d => d.name_value).flatMap(n => n.split('\n')).filter(s => s.includes(domain) &&!s.startsWith('*')))];
     return pretty({domain, count: subs.length, subdomains: subs.slice(0, 100)});
@@ -83,7 +83,7 @@ async function subdomains(domain, cors, pretty) {
   }
 }
 
-async function dnsProp(domain, type, cors, pretty) {
+async function dnsProp(domain, type, pretty) {
   if(!domain) return pretty({error: 'domain required'});
   type = type.toUpperCase();
 
@@ -122,7 +122,7 @@ async function dnsProp(domain, type, cors, pretty) {
   return pretty({domain, type, results});
 }
 
-async function ptr(ipParam, request, cors, pretty) {
+async function ptr(ipParam, request, pretty) {
   const ip = getIP(ipParam, request);
   if(ip === 'unknown') return pretty({error: 'IP required'});
 
@@ -159,7 +159,7 @@ async function ptr(ipParam, request, cors, pretty) {
   }
 }
 
-async function rdap(domain, cors, pretty) {
+async function rdap(domain, pretty) {
   if(!domain) return pretty({error: 'domain required'});
   try {
     const r = await fetch(`https://rdap.org/domain/${domain}`, {signal: AbortSignal.timeout(5000)});
@@ -176,7 +176,7 @@ async function rdap(domain, cors, pretty) {
   }
 }
 
-async function screenshot(urlParam, cors, pretty) {
+async function screenshot(urlParam, pretty) {
   if(!urlParam) return pretty({error: 'url required'});
   let url = urlParam;
   if(!url.startsWith('http')) url = 'https://' + url;
@@ -184,7 +184,7 @@ async function screenshot(urlParam, cors, pretty) {
   return pretty({url, screenshot_url: shotUrl, note: 'Open screenshot_url in browser'});
 }
 
-async function whois(domain, cors, pretty) {
+async function whois(domain, pretty) {
   if(!domain) return pretty({error: 'domain required'});
   try {
     const r = await fetch(`https://rdap.org/domain/${domain}`, {signal: AbortSignal.timeout(5000)});
@@ -204,7 +204,7 @@ async function whois(domain, cors, pretty) {
   }
 }
 
-async function whoisRaw(domain, cors, pretty) {
+async function whoisRaw(domain, pretty) {
   if(!domain) return pretty({error: 'domain required'});
   try {
     const r = await fetch(`https://rdap.org/domain/${domain}`, {signal: AbortSignal.timeout(5000)});
