@@ -7,16 +7,6 @@ export async function onRequest(context) {
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type'
   };
-  const pretty = (data, cors) =>
-    new Response(
-      JSON.stringify(data, null, 2),
-      {
-        headers: {
-          ...cors,
-          "Content-Type": "application/json"
-        }
-      }
-  );
   if (context.request.method === 'OPTIONS') return new Response(null, {headers: cors});
 
   try {
