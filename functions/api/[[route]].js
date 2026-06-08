@@ -137,27 +137,6 @@ async function asn(ip, cors) {
   return Response.json(data.data);
 }
 
-async function whois(domain, cors) {
-  if(!domain) return Response.json({error: 'domain required'}, {headers: cors});
-  try {
-    const tld = domain.split('.').pop();
-    const r = await fetch(`https://rdap.org/domain/${domain}`, {signal: AbortSignal.timeout(5000)});
-    if(!r.ok) throw new Error('RDAP ' + r.status);
-    const data = await r.json();
-
-    return Response.json({
-      domain,
-      registrar: data.entities?.find(e => e.roles?.includes('registrar'))?.vcardArray?.[1]?.find(x => x[0] === 'fn')?.[3] || 'N/A',
-      created: data.events?.find(e => e.eventAction === 'registration')?.eventDate,
-      expires: data.events?.find(e => e.eventAction === 'expiration')?.eventDate,
-      nameservers: data.nameservers?.map(n => n.ldhName) || [],
-      status: data.status || []
-    }, {headers: cors});
-  } catch(e) {
-    return Response.json({error: 'RDAP lookup failed: ' + e.message}, {headers: cors});
-  }
-}
-
 // 7. MAIL SERVER HEALTH
 async function mailHealth(domain, cors) {
   if(!domain) return Response.json({error: 'domain required'}, {headers: cors});
@@ -208,14 +187,13 @@ async function webHealth(url, cors) {
 }
 
 // 9. DNS PROPAGATION - Query multiple public DNS
+// Fixed DNS Propagation - only stable DoH resolvers
 async function dnsProp(domain, type, cors) {
   if(!domain) return Response.json({error: 'domain required'}, {headers: cors});
 
   const resolvers = [
     {name: 'Google', url: 'https://dns.google/resolve'},
-    {name: 'Cloudflare', url: 'https://cloudflare-dns.com/dns-query'},
-    {name: 'Quad9', url: 'https://dns.quad9.net/dns-query'},
-    {name: 'OpenDNS', url: 'https://doh.opendns.com/dns-query'}
+    {name: 'Cloudflare', url: 'https://cloudflare-dns.com/dns-query'}
   ];
 
   const results = {};
@@ -223,7 +201,7 @@ async function dnsProp(domain, type, cors) {
     try {
       const res = await fetch(`${r.url}?name=${domain}&type=${type}`, {
         headers: {'Accept': 'application/dns-json'},
-        signal: AbortSignal.timeout(3000)
+        signal: AbortSignal.timeout(4000)
       });
       if(!res.ok) throw new Error('HTTP ' + res.status);
       const json = await res.json();
@@ -233,6 +211,48 @@ async function dnsProp(domain, type, cors) {
     }
   }
   return Response.json({domain, type, results}, {headers: cors});
+}
+
+// Fixed WHOIS - DNS-based fallback, no 403
+async function whois(domain, cors) {
+  if(!domain) return Response.json({error: 'domain required'}, {headers: cors});
+
+  try {
+    // RDAP often 403 from CF, so fallback to DNS data
+    const ns = await fetch(`https://dns.google/resolve?name=${domain}&type=NS`).then(r=>r.json());
+    const soa = await fetch(`https://dns.google/resolve?name=${domain}&type=SOA`).then(r=>r.json());
+
+    const nameservers = ns.Answer?.map(a => a.data.replace(/\.$/, '')) || [];
+    const soaRecord = soa.Answer?.[0]?.data?.split(' ') || [];
+
+    // Try whoisjson.com as backup - free, no key
+    let registrar = 'N/A', created = 'N/A', expires = 'N/A';
+    try {
+      const w = await fetch(`https://api.whoisjson.com/v1/${domain}`, {signal: AbortSignal.timeout(3000)});
+      if(w.ok) {
+        const wd = await w.json();
+        registrar = wd.registrar?.name || 'N/A';
+        created = wd.created_date || 'N/A';
+        expires = wd.expiration_date || 'N/A';
+      }
+    } catch {}
+
+    return Response.json({
+      domain,
+      registrar,
+      created,
+      expires,
+      nameservers,
+      soa: soaRecord.length? {
+        mname: soaRecord[0],
+        rname: soaRecord[1],
+        serial: soaRecord[2]
+      } : null,
+      note: 'RDAP blocked by provider. Using DNS + whoisjson fallback.'
+    }, {headers: cors});
+  } catch(e) {
+    return Response.json({error: 'Lookup failed: ' + e.message}, {headers: cors});
+  }
 }
 
 // 10. SUBDOMAIN DISCOVERY - Use crt.sh + SecurityTrails free API
