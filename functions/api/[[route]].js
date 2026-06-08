@@ -241,45 +241,39 @@ async function ptr(ipParam, context, cors) {
   const ip = getIP(ipParam, context);
   if(ip === 'unknown') return Response.json({error: 'IP required'}, {headers: cors});
 
-  if(ip.includes(':')) return Response.json({ip, ptr: [], note: 'IPv6 PTR not supported yet'}, {headers: cors});
+  // 1. Try official DNS PTR first
+  if(!ip.includes(':')) {
+    const reversed = ip.split('.').reverse().join('.') + '.in-addr.arpa';
+    try {
+      const r = await fetch(`https://dns.google/resolve?name=${reversed}&type=PTR`, {
+        headers: {'Accept': 'application/dns-json'},
+        signal: AbortSignal.timeout(3000)
+      });
+      const json = await r.json();
+      const ptrs = json.Answer?.filter(a => a.type === 12).map(a => a.data.replace(/\.$/, '')) || [];
+      if(ptrs.length) {
+        return Response.json({ip, source: 'DNS', ptr_count: ptrs.length, ptr: ptrs, status: 'found'}, {headers: cors});
+      }
+    } catch {}
+  }
 
-  const reversed = ip.split('.').reverse().join('.') + '.in-addr.arpa';
+  // 2. Fallback: ip-api.com reverse field - not official DNS but shows hostname more often
   try {
-    const r = await fetch(`https://dns.google/resolve?name=${reversed}&type=PTR`, {
-      headers: {'Accept': 'application/dns-json'},
-      signal: AbortSignal.timeout(4000)
-    });
-    
-    if(!r.ok) return Response.json({ip, ptr: [], query: reversed, error: `HTTP ${r.status}`}, {headers: cors});
-    
-    const json = await r.json();
-    
-    // Status codes: 0=NOERROR, 2=ServFail, 3=NXDOMAIN
-    if(json.Status === 3 || json.Status === 2) {
+    const r = await fetch(`http://ip-api.com/json/${ip}?fields=reverse,query,status`, {signal: AbortSignal.timeout(3000)});
+    const data = await r.json();
+    if(data.status === 'success' && data.reverse && data.reverse !== ip) {
       return Response.json({
         ip, 
-        ptr: [], 
-        query: reversed, 
-        status: 'no_record',
-        dns_status: json.Status
+        source: 'ip-api.com', 
+        ptr_count: 1, 
+        ptr: [data.reverse], 
+        status: 'found',
+        note: 'Not official DNS PTR. Best-effort hostname from ip-api DB'
       }, {headers: cors});
     }
-    
-    // Get ALL PTR records
-    const ptrs = json.Answer?.filter(a => a.type === 12).map(a => a.data.replace(/\.$/, '')) || [];
-    
-    return Response.json({
-      ip,
-      query: reversed,
-      ptr_count: ptrs.length,
-      ptr: ptrs,
-      status: ptrs.length ? 'found' : 'no_record',
-      dns_status: json.Status
-    }, {headers: cors});
-    
-  } catch(e) {
-    return Response.json({ip, ptr: [], query: reversed, error: 'Fetch error: ' + e.message}, {headers: cors});
-  }
+  } catch {}
+
+  return Response.json({ip, source: 'none', ptr_count: 0, ptr: [], status: 'no_record'}, {headers: cors});
 }
 
 async function blacklist(ipParam, context, cors) {
