@@ -138,9 +138,24 @@ async function asn(ip, cors) {
 }
 
 async function whois(domain, cors) {
-  const r = await fetch(`https://api.domainsdb.info/v1/domains/search?domain=${domain}`);
-  const data = await r.json();
-  return Response.json(data);
+  if(!domain) return Response.json({error: 'domain required'}, {headers: cors});
+  try {
+    const tld = domain.split('.').pop();
+    const r = await fetch(`https://rdap.org/domain/${domain}`, {signal: AbortSignal.timeout(5000)});
+    if(!r.ok) throw new Error('RDAP ' + r.status);
+    const data = await r.json();
+
+    return Response.json({
+      domain,
+      registrar: data.entities?.find(e => e.roles?.includes('registrar'))?.vcardArray?.[1]?.find(x => x[0] === 'fn')?.[3] || 'N/A',
+      created: data.events?.find(e => e.eventAction === 'registration')?.eventDate,
+      expires: data.events?.find(e => e.eventAction === 'expiration')?.eventDate,
+      nameservers: data.nameservers?.map(n => n.ldhName) || [],
+      status: data.status || []
+    }, {headers: cors});
+  } catch(e) {
+    return Response.json({error: 'RDAP lookup failed: ' + e.message}, {headers: cors});
+  }
 }
 
 // 7. MAIL SERVER HEALTH
@@ -194,22 +209,30 @@ async function webHealth(url, cors) {
 
 // 9. DNS PROPAGATION - Query multiple public DNS
 async function dnsProp(domain, type, cors) {
+  if(!domain) return Response.json({error: 'domain required'}, {headers: cors});
+
   const resolvers = [
-    'https://dns.google/resolve',
-    'https://cloudflare-dns.com/dns-query',
-    'https://dns.quad9.net/dns-query',
-    'https://dns.opendns.com/resolve'
+    {name: 'Google', url: 'https://dns.google/resolve'},
+    {name: 'Cloudflare', url: 'https://cloudflare-dns.com/dns-query'},
+    {name: 'Quad9', url: 'https://dns.quad9.net/dns-query'},
+    {name: 'OpenDNS', url: 'https://doh.opendns.com/dns-query'}
   ];
 
   const results = {};
-  for(let resolver of resolvers) {
-    const r = await fetch(`${resolver}?name=${domain}&type=${type}`, {
-      headers: {'Accept': 'application/dns-json'}
-    });
-    const json = await r.json();
-    results[new URL(resolver).hostname] = json.Answer?.map(a => a.data) || [];
+  for(let r of resolvers) {
+    try {
+      const res = await fetch(`${r.url}?name=${domain}&type=${type}`, {
+        headers: {'Accept': 'application/dns-json'},
+        signal: AbortSignal.timeout(3000)
+      });
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      const json = await res.json();
+      results[r.name] = json.Answer?.map(a => a.data) || ['No records'];
+    } catch(e) {
+      results[r.name] = ['Error: ' + e.message];
+    }
   }
-  return Response.json({domain, type, results});
+  return Response.json({domain, type, results}, {headers: cors});
 }
 
 // 10. SUBDOMAIN DISCOVERY - Use crt.sh + SecurityTrails free API
