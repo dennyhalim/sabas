@@ -193,7 +193,11 @@ async function dnsProp(domain, type, cors) {
 
   const resolvers = [
     {name: 'Google', url: 'https://dns.google/resolve'},
-    {name: 'Cloudflare', url: 'https://cloudflare-dns.com/dns-query'}
+    {name: 'Cloudflare', url: 'https://cloudflare-dns.com/dns-query'},
+    {name: 'cleanbrowsing', url: 'https://doh.cleanbrowsing.org/doh/family-filter/'},
+    {name: 'ctrld', url: 'https://freedns.controld.com/dns-query'},
+    {name: 'mulvad', url: 'https://adblock.dns.mullvad.net/dns-query'},
+    {name: 'adguard', url: 'https://family.adguard-dns.com/dns-query'},
   ];
 
   const results = {};
