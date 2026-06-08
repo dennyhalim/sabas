@@ -262,7 +262,7 @@ async function ptr(ipParam, context, cors) {
       const json = await r.json();
       const ptrs = json.Answer?.filter(a => a.type === 12).map(a => a.data.replace(/\.$/, '')) || [];
       if(ptrs.length) {
-        return pretty({ip, source: 'DNS', ptr_count: ptrs.length, ptr: ptrs, status: 'found'}, {headers: cors});
+        return Response.json({ip, source: 'DNS', ptr_count: ptrs.length, ptr: ptrs, status: 'found'}, {headers: cors});
       }
     } catch {}
   }
@@ -272,7 +272,7 @@ async function ptr(ipParam, context, cors) {
     const r = await fetch(`http://ip-api.com/json/${ip}?fields=reverse,query,status`, {signal: AbortSignal.timeout(3000)});
     const data = await r.json();
     if(data.status === 'success' && data.reverse && data.reverse !== ip) {
-      return pretty({
+      return Response.json({
         ip, 
         source: 'ip-api.com', 
         ptr_count: 1, 
@@ -283,7 +283,7 @@ async function ptr(ipParam, context, cors) {
     }
   } catch {}
 
-  return pretty({ip, source: 'none', ptr_count: 0, ptr: [], status: 'no_record'}, {headers: cors});
+  return Response.json({ip, source: 'none', ptr_count: 0, ptr: [], status: 'no_record'}, {headers: cors});
 }
 
 async function blacklist(ipParam, context, cors) {
@@ -335,7 +335,7 @@ async function blacklist(ipParam, context, cors) {
       results[list] = {status: 'ERROR', code: null, reason: e.message};
     }
   }
-  return pretty({ip, results}, {headers: cors});
+  return Response.json({ip, results}, {headers: cors});
 }
 
 async function bgp(ipParam, context, cors) {
