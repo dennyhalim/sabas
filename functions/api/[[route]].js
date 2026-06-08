@@ -217,16 +217,37 @@ async function blacklist(ipParam, context, cors) {
   if(ip === 'unknown') return Response.json({error: 'IP required'}, {headers: cors});
 
   const reversed = ip.split('.').reverse().join('.');
-  const lists = ['zen.spamhaus.org', 'bl.spamcop.net'];
-  const results = {};
+  const lists = {
+    'zen.spamhaus.org': {
+      '127.0.0.2': 'SBL - Spamhaus Block List',
+      '127.0.0.3': 'CSS - Spamhaus Exploits',
+      '127.0.0.4': 'SBL - Spamhaus Block List',
+      '127.0.0.10': 'SBL + CSS',
+      '127.0.0.11': 'SBL + CSS'
+    },
+    'bl.spamcop.net': {
+      '127.0.0.2': 'SpamCop listed'
+    }
+  };
 
-  for(let list of lists) {
+  const results = {};
+  for(let list in lists) {
     try {
       const dns = await fetch(`https://dns.google/resolve?name=${reversed}.${list}&type=A`);
       const json = await dns.json();
-      results[list] = json.Status === 0? 'LISTED' : 'CLEAN';
-    } catch {
-      results[list] = 'ERROR';
+
+      if(json.Status === 0 && json.Answer?.[0]?.data) {
+        const code = json.Answer[0].data;
+        results[list] = {
+          status: 'LISTED',
+          code: code,
+          reason: lists[list][code] || 'Unknown listing code'
+        };
+      } else {
+        results[list] = {status: 'CLEAN', code: null, reason: 'Not listed'};
+      }
+    } catch(e) {
+      results[list] = {status: 'ERROR', code: null, reason: e.message};
     }
   }
   return Response.json({ip, results}, {headers: cors});
