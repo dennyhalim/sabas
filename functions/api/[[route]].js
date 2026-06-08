@@ -292,12 +292,17 @@ async function blacklist(ipParam, context, cors) {
     'bl.spamcop.net': {
       '127.0.0.2': 'SpamCop listed'
     },
+    'b.barracudacentral.org' : {},
+    'psbl.surriel.com' : {},
+    'dnsbl.sorbs.net' : {},
+    'truncate.gbudb.net' : {},
+    'dnsbl-1.uceprotect.net' : {},
     'all.s5h.net' : {},
     'dnsbl.spfbl.net' : {},
-    'dnsbl-1.uceprotect.net' : {},
-    'dnsbl.sorbs.net' : {},
     'combined.njabl.org' : {},
     'combined.abuse.ch' : {},
+    'b.barracudacentral.org' : {},
+    'dnsbl.dronebl.org' : {},
   };
 
   const results = {};
