@@ -291,7 +291,13 @@ async function blacklist(ipParam, context, cors) {
     },
     'bl.spamcop.net': {
       '127.0.0.2': 'SpamCop listed'
-    }
+    },
+    'all.s5h.net' : {},
+    'dnsbl.spfbl.net' : {},
+    'cbl.abuseat.org' : {},
+    'dnsbl.sorbs.net' : {},
+    'combined.njabl.org' : {},
+    'combined.abuse.ch' : {},
   };
 
   const results = {};
