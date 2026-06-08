@@ -249,9 +249,23 @@ async function ptr(ipParam, context, cors) {
       headers: {'Accept': 'application/dns-json'},
       signal: AbortSignal.timeout(4000)
     });
+    
+    if(!r.ok) return Response.json({ip, ptr: [], query: reversed, error: `HTTP ${r.status}`}, {headers: cors});
+    
     const json = await r.json();
     
-    // Get ALL PTR records, not just first one
+    // Status codes: 0=NOERROR, 2=ServFail, 3=NXDOMAIN
+    if(json.Status === 3 || json.Status === 2) {
+      return Response.json({
+        ip, 
+        ptr: [], 
+        query: reversed, 
+        status: 'no_record',
+        dns_status: json.Status
+      }, {headers: cors});
+    }
+    
+    // Get ALL PTR records
     const ptrs = json.Answer?.filter(a => a.type === 12).map(a => a.data.replace(/\.$/, '')) || [];
     
     return Response.json({
@@ -259,10 +273,12 @@ async function ptr(ipParam, context, cors) {
       query: reversed,
       ptr_count: ptrs.length,
       ptr: ptrs,
-      status: json.Status === 0 ? (ptrs.length ? 'found' : 'no_record') : 'dns_error'
+      status: ptrs.length ? 'found' : 'no_record',
+      dns_status: json.Status
     }, {headers: cors});
+    
   } catch(e) {
-    return Response.json({ip, query: reversed, ptr: [], error: e.message}, {headers: cors});
+    return Response.json({ip, ptr: [], query: reversed, error: 'Fetch error: ' + e.message}, {headers: cors});
   }
 }
 
