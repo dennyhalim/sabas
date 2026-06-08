@@ -296,12 +296,12 @@ async function blacklist(ipParam, context, cors) {
     'psbl.surriel.com' : {},
     'dnsbl.sorbs.net' : {},
     'truncate.gbudb.net' : {},
+    'bl.mailspike.net' : {},
     'dnsbl-1.uceprotect.net' : {},
     'all.s5h.net' : {},
     'dnsbl.spfbl.net' : {},
     'combined.njabl.org' : {},
     'combined.abuse.ch' : {},
-    'b.barracudacentral.org' : {},
     'dnsbl.dronebl.org' : {},
   };
 
