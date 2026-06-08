@@ -248,7 +248,7 @@ async function whois(domain, cors) {
         rname: soaRecord[1],
         serial: soaRecord[2]
       } : null,
-      note: 'RDAP blocked by provider. Using DNS + whoisjson fallback.'
+      note: 'Using DNS + whoisjson fallback.'
     }, {headers: cors});
   } catch(e) {
     return Response.json({error: 'Lookup failed: ' + e.message}, {headers: cors});
