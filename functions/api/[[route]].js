@@ -183,6 +183,8 @@ async function geo(context, ipParam, cors) {
       ip,
       country: req.cf?.country || 'XX',
       city: req.cf?.city || 'Unknown',
+      lat: req.cf?.latitude,
+      lon: req.cf?.longitude,
       asn: req.cf?.asn || 0,
       timezone: req.cf?.timezone || 'UTC',
       colo: req.cf?.colo,
