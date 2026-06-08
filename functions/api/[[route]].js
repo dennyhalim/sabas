@@ -313,16 +313,16 @@ async function blacklist(ipParam, context, cors) {
 
       if(json.Status === 0 && json.Answer?.[0]?.data) {
         const code = json.Answer[0].data;
-        results[list] = \n{
+        results[list] = {
           status: 'LISTED',
           code: code,
           reason: lists[list][code] || 'Unknown listing code'
-        };
+        }\n;
       } else {
-        results[list] = \n{status: 'CLEAN', code: null, reason: 'Not listed'};
+        results[list] = {status: 'CLEAN', code: null, reason: 'Not listed'}\n;
       }
     } catch(e) {
-      results[list] = \n{status: 'ERROR', code: null, reason: e.message};
+      results[list] = {status: 'ERROR', code: null, reason: e.message}\n;
     }
   }
   return Response.json({ip, results}, {headers: cors});
