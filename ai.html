@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Multi-API Chat</title>
+  <style>
+    body{font-family:sans-serif;max-width:700px;margin:40px auto;padding:0 16px}
+    #chat{border:1px solid #ddd;height:400px;overflow-y:auto;padding:12px;margin-bottom:8px}
+   .msg{margin:8px 0}.user{color:#0b57d0}.ai{color:#188038}
+    input,select,button{padding:8px;font-size:16px}
+    input{width:70%}
+  </style>
+</head>
+<body>
+  <h3>AI Chat - Multi API</h3>
+  <select id="model">
+    <option value="openrouter">OpenRouter - Llama 3.1 8B</option>
+    <option value="openai">OpenAI - GPT-4o mini</option>
+    <option value="hf">HuggingFace - Zephyr 7B</option>
+  </select>
+  <div id="chat"></div>
+  <input id="input" placeholder="Type message...">
+  <button onclick="send()">Send</button>
+
+<script>
+const chat = document.getElementById('chat');
+function addMsg(text, cls){
+  chat.innerHTML += `<div class="msg ${cls}">${text}</div>`;
+  chat.scrollTop = chat.scrollHeight;
+}
+
+async function send(){
+  const inp = document.getElementById('input');
+  const model = document.getElementById('model').value;
+  const msg = inp.value;
+  if(!msg) return;
+  addMsg('You: '+msg, 'user');
+  inp.value = '';
+
+  addMsg('AI:...', 'ai');
+
+  const res = await fetch('/api/chat', {
+    method: 'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({msg, model})
+  });
+  const data = await res.json();
+
+  chat.lastChild.innerHTML = 'AI: ' + (data.reply || data.error);
+}
+</script>
+</body>
+</html>
