@@ -1,162 +1,22 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>LocalShare FIX</title>
-<style>
-body{background:#0f172a;color:#e2e8f0;font:14px system-ui;padding:20px}
-.wrap{max-width:700px;margin:auto}
-.card{background:#1e293b;padding:15px;border-radius:10px;margin:10px 0}
-button{background:#3b82f6;border:0;padding:8px 14px;border-radius:6px;color:white;cursor:pointer;margin:4px}
-input{width:100%;padding:8px;background:#020617;border:1px solid #334155;color:#e2e8f0;border-radius:6px}
-#log{height:180px;overflow:auto;background:#020617;padding:10px;border-radius:6px;font:12px monospace}
-video{width:49%;background:#000;border-radius:8px}
-.ok{color:#4ade80}.err{color:#f87171}
-</style>
-</head>
-<body>
-<div class="wrap">
-<h2>📡 LocalShare P2P v2</h2>
-
-<div class="card">
-<b>1. Device A klik "Buat Offer"</b><br>
-<button onclick="makeOffer()">Buat Offer</button>
-<div id="qr"></div>
-</div>
-
-<div class="card">
-<b>2. Copy isi box bawah, kirim ke Device B</b><br>
-<textarea id="sdp" rows="6" placeholder="SDP offer/answer akan muncul di sini..."></textarea>
-<button onclick="copySDP()">Copy</button>
-</div>
-
-<div class="card">
-<b>3. Device B paste SDP dari A, klik "Set Remote"</b><br>
-<textarea id="sdpIn" rows="4" placeholder="Paste SDP dari teman..."></textarea><br>
-<button onclick="setRemote()">Set Remote</button>
-</div>
-
-<div class="card" id="chat" style="display:none">
-<b>4. Connected!</b>
-<div id="log"></div>
-<input id="msg" placeholder="Ketik pesan Enter"><br>
-<button onclick="sendFile()">📁 Kirim File</button>
-<input type="file" id="file" style="display:none">
-<button onclick="startCam()">📹 Camera</button>
-<div>
-<video id="local" autoplay muted playsinline></video>
-<video id="remote" autoplay playsinline></video>
-</div>
-</div>
-</div>
-
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script>
-let pc, dc, localStream;
-const log = t => {document.getElementById('log').innerHTML += t+'<br>'; document.getElementById('log').scrollTop=9999};
-const sdpBox = document.getElementById('sdp');
+const room = new URLSearchParams(location.search).get('room') || 'default';
+const peer = new Peer(room, {debug: 2});
 
-const config = {
-  iceServers: [
-    {urls:'stun:stun.l.google.com:19302'},
-    {urls:'stun:stun1.l.google.com:19302'}
-  ]
-};
+let conn;
+peer.on('open', () => {
+  const otherId = room + '-2'; // peer ke-2 pake ID beda
+  conn = peer.connect(otherId);
+  conn.on('data', d => console.log('Peer:', d));
+});
 
-function initPC(isOfferer) {
-  pc = new RTCPeerConnection(config);
+peer.on('connection', c => {
+  conn = c;
+  conn.on('data', d => console.log('Peer:', d));
+});
 
-  pc.onicecandidate = e => {
-    if(!e.candidate) {
-      sdpBox.value = JSON.stringify(pc.localDescription);
-      log('<span class="ok">✓ SDP siap! Copy kirim ke teman</span>');
-    }
-  };
-
-  pc.onconnectionstatechange = () => {
-    log('State: '+pc.connectionState);
-    if(pc.connectionState === 'connected') {
-      document.getElementById('chat').style.display = 'block';
-    }
-  };
-
-  pc.ondatachannel = e => {
-    dc = e.channel;
-    setupDC();
-  };
-
-  pc.ontrack = e => {
-    document.getElementById('remote').srcObject = e.streams[0];
-    log('<span class="ok">✓ Video masuk</span>');
-  };
-
-  if(isOfferer) {
-    dc = pc.createDataChannel('chat');
-    setupDC();
-  }
-}
-
-function setupDC() {
-  dc.onopen = () => log('<span class="ok">✓ DataChannel Open!</span>');
-  dc.onmessage = e => {
-    if(typeof e.data === 'string') log('<b>Teman:</b> '+e.data);
-    else {
-      const url = URL.createObjectURL(e.data);
-      log('<b>📁 File:</b> <a href="'+url+'" download>Download</a>');
-    }
-  };
-}
-
-async function makeOffer() {
-  initPC(true);
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
-  log('Membuat offer...');
-}
-
-async function setRemote() {
-  const data = JSON.parse(document.getElementById('sdpIn').value);
-  if(!pc) initPC(false);
-
-  await pc.setRemoteDescription(data);
-  log('Remote SDP diset: '+data.type);
-
-  if(data.type === 'offer') {
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-  }
-}
-
-async function sendMsg() {
-  const m = document.getElementById('msg').value;
-  if(dc && dc.readyState === 'open') {
-    dc.send(m);
-    log('<b>Kamu:</b> '+m);
-    document.getElementById('msg').value = '';
-  }
-}
-
-document.getElementById('msg').onkeypress = e => {
-  if(e.key === 'Enter') sendMsg();
-};
-
-function sendFile() {document.getElementById('file').click();}
-document.getElementById('file').onchange = e => {
-  const f = e.target.files[0];
-  dc.send(f);
-  log('<b>Kirim file:</b> '+f.name);
-};
-
-async function startCam() {
-  localStream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
-  document.getElementById('local').srcObject = localStream;
-  localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
-}
-
-function copySDP() {
-  sdpBox.select();
-  document.execCommand('copy');
-  alert('Copied!');
+function send() {
+  conn?.send(document.getElementById('msg').value);
 }
 </script>
-</body>
-</html>
+<input id="msg"><button onclick="send()">Send</button>
