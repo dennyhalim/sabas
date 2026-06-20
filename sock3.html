@@ -1,159 +1,161 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LocalShare P2P</title>
+<title>LocalShare FIX</title>
 <style>
-body{font-family:system-ui;background:#0f172a;color:#e2e8f0;margin:0;padding:20px}
-.wrap{max-width:800px;margin:0 auto}
-.card{background:#1e293b;padding:20px;border-radius:12px;margin-bottom:15px}
-button{background:#3b82f6;border:0;color:white;padding:10px 16px;border-radius:8px;cursor:pointer}
-button:hover{background:#2563eb}
-input[type=file]{display:none}
-#log{height:200px;overflow:auto;background:#020617;padding:10px;border-radius:8px;font:13px monospace}
-.msg{margin:5px 0}
-.me{color:#60a5fa}.peer{color:#34d399}
-video{width:100%;max-height:240px;background:#000;border-radius:8px}
-#qr canvas{margin:10px 0}
+body{background:#0f172a;color:#e2e8f0;font:14px system-ui;padding:20px}
+.wrap{max-width:700px;margin:auto}
+.card{background:#1e293b;padding:15px;border-radius:10px;margin:10px 0}
+button{background:#3b82f6;border:0;padding:8px 14px;border-radius:6px;color:white;cursor:pointer;margin:4px}
+input{width:100%;padding:8px;background:#020617;border:1px solid #334155;color:#e2e8f0;border-radius:6px}
+#log{height:180px;overflow:auto;background:#020617;padding:10px;border-radius:6px;font:12px monospace}
+video{width:49%;background:#000;border-radius:8px}
+.ok{color:#4ade80}.err{color:#f87171}
 </style>
 </head>
 <body>
 <div class="wrap">
-<h2>📡 LocalShare P2P</h2>
+<h2>📡 LocalShare P2P v2</h2>
 
 <div class="card">
-<b>Step 1: Connect</b><br>
-<button id="create">Buat Room</button>
-<button id="join">Join Room</button>
+<b>1. Device A klik "Buat Offer"</b><br>
+<button onclick="makeOffer()">Buat Offer</button>
 <div id="qr"></div>
-<input id="offer" placeholder="Paste offer/answer di sini" style="width:100%;margin-top:10px">
-<button id="sendOffer">Send</button>
 </div>
 
-<div class="card" id="chatBox" style="display:none">
-<b>Step 2: Chat + File + A/V</b>
+<div class="card">
+<b>2. Copy isi box bawah, kirim ke Device B</b><br>
+<textarea id="sdp" rows="6" placeholder="SDP offer/answer akan muncul di sini..."></textarea>
+<button onclick="copySDP()">Copy</button>
+</div>
+
+<div class="card">
+<b>3. Device B paste SDP dari A, klik "Set Remote"</b><br>
+<textarea id="sdpIn" rows="4" placeholder="Paste SDP dari teman..."></textarea><br>
+<button onclick="setRemote()">Set Remote</button>
+</div>
+
+<div class="card" id="chat" style="display:none">
+<b>4. Connected!</b>
 <div id="log"></div>
-<input id="msg" placeholder="Ketik pesan..." style="width:70%">
-<button id="sendMsg">Send</button>
-<br><br>
-<label><button onclick="file.click()">📁 Kirim File</button></label>
-<input type="file" id="file">
-<br><br>
-<button id="startCam">📹 Start Camera</button>
-<button id="stopCam">⏹ Stop</button>
-<video id="localVideo" autoplay muted playsinline></video>
-<video id="remoteVideo" autoplay playsinline></video>
+<input id="msg" placeholder="Ketik pesan Enter"><br>
+<button onclick="sendFile()">📁 Kirim File</button>
+<input type="file" id="file" style="display:none">
+<button onclick="startCam()">📹 Camera</button>
+<div>
+<video id="local" autoplay muted playsinline></video>
+<video id="remote" autoplay playsinline></video>
+</div>
 </div>
 </div>
 
-<script src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
 <script>
 let pc, dc, localStream;
-const config = {iceServers:[{urls:'stun:stun.l.google.com:19302'}]};
+const log = t => {document.getElementById('log').innerHTML += t+'<br>'; document.getElementById('log').scrollTop=9999};
+const sdpBox = document.getElementById('sdp');
 
-const log = t => {
-  document.getElementById('log').innerHTML += `<div class="msg">${t}</div>`;
-  document.getElementById('log').scrollTop = 99999;
+const config = {
+  iceServers: [
+    {urls:'stun:stun.l.google.com:19302'},
+    {urls:'stun:stun1.l.google.com:19302'}
+  ]
 };
 
-// Buat peer connection
-function initPC() {
+function initPC(isOfferer) {
   pc = new RTCPeerConnection(config);
+
   pc.onicecandidate = e => {
-    if(e.candidate) return;
-    document.getElementById('offer').value = JSON.stringify(pc.localDescription);
-    makeQR(JSON.stringify(pc.localDescription));
+    if(!e.candidate) {
+      sdpBox.value = JSON.stringify(pc.localDescription);
+      log('<span class="ok">✓ SDP siap! Copy kirim ke teman</span>');
+    }
   };
+
+  pc.onconnectionstatechange = () => {
+    log('State: '+pc.connectionState);
+    if(pc.connectionState === 'connected') {
+      document.getElementById('chat').style.display = 'block';
+    }
+  };
+
   pc.ondatachannel = e => {
     dc = e.channel;
-    setupDataChannel();
+    setupDC();
   };
+
   pc.ontrack = e => {
-    document.getElementById('remoteVideo').srcObject = e.streams[0];
+    document.getElementById('remote').srcObject = e.streams[0];
+    log('<span class="ok">✓ Video masuk</span>');
   };
+
+  if(isOfferer) {
+    dc = pc.createDataChannel('chat');
+    setupDC();
+  }
 }
 
-// Data channel untuk chat + file
-function setupDataChannel() {
-  dc.onopen = () => {
-    log('<span class="peer">✓ Connected!</span>');
-    document.getElementById('chatBox').style.display = 'block';
-  };
+function setupDC() {
+  dc.onopen = () => log('<span class="ok">✓ DataChannel Open!</span>');
   dc.onmessage = e => {
-    if(typeof e.data === 'string') {
-      log('<span class="peer">Peer: '+e.data+'</span>');
-    } else {
-      // File blob
+    if(typeof e.data === 'string') log('<b>Teman:</b> '+e.data);
+    else {
       const url = URL.createObjectURL(e.data);
-      log('<span class="peer">📁 File diterima: <a href="'+url+'" download>Download</a></span>');
+      log('<b>📁 File:</b> <a href="'+url+'" download>Download</a>');
     }
   };
 }
 
-// Buat room
-document.getElementById('create').onclick = async () => {
-  initPC();
-  dc = pc.createDataChannel('chat');
-  setupDataChannel();
+async function makeOffer() {
+  initPC(true);
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);
-};
+  log('Membuat offer...');
+}
 
-// Join room
-document.getElementById('join').onclick = async () => {
-  initPC();
-};
+async function setRemote() {
+  const data = JSON.parse(document.getElementById('sdpIn').value);
+  if(!pc) initPC(false);
 
-// Kirim offer/answer
-document.getElementById('sendOffer').onclick = async () => {
-  const data = JSON.parse(document.getElementById('offer').value);
+  await pc.setRemoteDescription(data);
+  log('Remote SDP diset: '+data.type);
+
   if(data.type === 'offer') {
-    await pc.setRemoteDescription(data);
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
-  } else {
-    await pc.setRemoteDescription(data);
   }
-};
+}
 
-// Chat
-document.getElementById('sendMsg').onclick = () => {
+async function sendMsg() {
   const m = document.getElementById('msg').value;
   if(dc && dc.readyState === 'open') {
     dc.send(m);
-    log('<span class="me">Me: '+m+'</span>');
+    log('<b>Kamu:</b> '+m);
     document.getElementById('msg').value = '';
   }
+}
+
+document.getElementById('msg').onkeypress = e => {
+  if(e.key === 'Enter') sendMsg();
 };
 
-// File transfer
+function sendFile() {document.getElementById('file').click();}
 document.getElementById('file').onchange = e => {
-  const file = e.target.files[0];
-  if(dc && dc.readyState === 'open') {
-    dc.send(file);
-    log('<span class="me">📁 Kirim: '+file.name+' '+Math.round(file.size/1024)+'KB</span>');
-  }
+  const f = e.target.files[0];
+  dc.send(f);
+  log('<b>Kirim file:</b> '+f.name);
 };
 
-// Camera
-document.getElementById('startCam').onclick = async () => {
+async function startCam() {
   localStream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
-  document.getElementById('localVideo').srcObject = localStream;
+  document.getElementById('local').srcObject = localStream;
   localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
-};
+}
 
-document.getElementById('stopCam').onclick = () => {
-  localStream.getTracks().forEach(t => t.stop());
-};
-
-// QR code
-function makeQR(text) {
-  document.getElementById('qr').innerHTML = '';
-  new QRCodeStyling({
-    width:200, height:200, data:text,
-    dotsOptions:{color:"#3b82f6"}, backgroundOptions:{color:"#1e293b"}
-  }).append(document.getElementById('qr'));
+function copySDP() {
+  sdpBox.select();
+  document.execCommand('copy');
+  alert('Copied!');
 }
 </script>
 </body>
