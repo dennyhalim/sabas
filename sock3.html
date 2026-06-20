@@ -1,22 +1,252 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P2P Ably + PeerJS Fallback</title>
+<style>
+body{background:#0f172a;color:#e2e8f0;font:14px system-ui;margin:0;padding:20px}
+.wrap{max-width:900px;margin:auto}
+.card{background:#1e293b;padding:15px;border-radius:12px;margin:10px 0}
+button{background:#3b82f6;border:0;padding:8px 14px;border-radius:6px;color:white;cursor:pointer;margin:4px}
+button:hover{background:#2563eb}
+#log{height:220px;overflow:auto;background:#020617;padding:10px;border-radius:8px;font:12px monospace}
+video{width:49%;background:#000;border-radius:8px;margin-top:10px}
+input{padding:8px;background:#020617;border:1px solid #334155;color:#e2e8f0;border-radius:6px}
+.ok{color:#4ade80}.warn{color:#fbbf24}.err{color:#f87171}
+#status{font-size:12px;margin-bottom:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h2>📡 P2P Room: <span id="roomName"></span></h2>
+<div id="status">Loading...</div>
+
+<div class="card" id="chat" style="display:none">
+<div id="log"></div>
+<input id="msg" placeholder="Ketik pesan Enter" style="width:70%">
+<button onclick="sendMsg()">Send</button>
+<br><br>
+<button onclick="file.click()">📁 Kirim File</button>
+<input type="file" id="file" style="display:none">
+<button onclick="toggleCam()">📹 Camera</button>
+<div>
+<video id="local" autoplay muted playsinline></video>
+<video id="remote" autoplay playsinline></video>
+</div>
+</div>
+</div>
+
+<script src="https://cdn.ably.com/lib/ably.min.js"></script>
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script>
-const room = new URLSearchParams(location.search).get('room') || 'default';
-const peer = new Peer(room, {debug: 2});
+// === CONFIG ===
+const ABLY_API_KEY = 'ISI_KEY_KAMU_DI_SINI'; // daftar gratis di ably.com
+const params = new URLSearchParams(location.search);
+const room = params.get('room') || 'default-room';
+document.getElementById('roomName').textContent = room;
 
-let conn;
-peer.on('open', () => {
-  const otherId = room + '-2'; // peer ke-2 pake ID beda
-  conn = peer.connect(otherId);
-  conn.on('data', d => console.log('Peer:', d));
-});
+const log = t => {
+  document.getElementById('log').innerHTML += t+'<br>';
+  document.getElementById('log').scrollTop = 9999;
+};
+const setStatus = t => document.getElementById('status').innerHTML = t;
 
-peer.on('connection', c => {
-  conn = c;
-  conn.on('data', d => console.log('Peer:', d));
-});
+let pc, dc, localStream;
+let signaling = null; // 'ably' atau 'peerjs'
+let ablyChannel = null;
+let peer = null;
+let conn = null;
 
-function send() {
-  conn?.send(document.getElementById('msg').value);
+const config = {iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]};
+
+// === 1. COBA ABLY DULU ===
+async function initAbly() {
+  try {
+    setStatus('<span class="warn">Connecting Ably...</span>');
+    const ably = new Ably.Realtime(ABLY_API_KEY);
+    await ably.connection.once('connected');
+
+    ablyChannel = ably.channels.get(room);
+    await ablyChannel.subscribe('signal', msg => handleSignal(msg.data));
+
+    signaling = 'ably';
+    setStatus('<span class="ok">✓ Connected via Ably</span>');
+    log('<span class="ok">✓ Signaling: Ably</span>');
+    startWebRTC(true);
+    return true;
+  } catch(e) {
+    log('<span class="err">✗ Ably gagal: '+e.message+'</span>');
+    return false;
+  }
 }
+
+// === 2. FALLBACK KE PEERJS ===
+async function initPeerJS() {
+  try {
+    setStatus('<span class="warn">Fallback ke PeerJS Cloud...</span>');
+    peer = new Peer(room, {debug: 0});
+
+    await new Promise((res, rej) => {
+      peer.on('open', res);
+      peer.on('error', rej);
+      setTimeout(rej, 5000);
+    });
+
+    signaling = 'peerjs';
+    setStatus('<span class="ok">✓ Connected via PeerJS</span>');
+    log('<span class="ok">✓ Signaling: PeerJS Cloud</span>');
+
+    peer.on('connection', c => {
+      conn = c;
+      setupDataConn();
+    });
+
+    // Coba connect ke peer lain
+    setTimeout(() => {
+      const otherId = room + '-peer';
+      conn = peer.connect(otherId);
+      conn.on('open', setupDataConn);
+    }, 1000);
+
+    startWebRTC(false);
+    return true;
+  } catch(e) {
+    log('<span class="err">✗ PeerJS gagal juga: '+e.message+'</span>');
+    setStatus('<span class="err">✗ Semua signaling gagal</span>');
+    return false;
+  }
+}
+
+// === 3. WEBRTC CORE ===
+function startWebRTC(isOfferer) {
+  document.getElementById('chat').style.display = 'block';
+  if(isOfferer) setTimeout(makeOffer, 1500);
+}
+
+function initPC() {
+  if(pc) return;
+  pc = new RTCPeerConnection(config);
+
+  pc.onicecandidate = e => {
+    if(e.candidate) sendSignal({type:'ice', candidate:e.candidate});
+  };
+
+  pc.onconnectionstatechange = () => {
+    log('State: '+pc.connectionState);
+    if(pc.connectionState === 'connected') log('<span class="ok">✓ P2P Connected!</span>');
+  };
+
+  pc.ontrack = e => {
+    document.getElementById('remote').srcObject = e.streams[0];
+  };
+
+  pc.ondatachannel = e => {
+    dc = e.channel;
+    setupDC();
+  };
+}
+
+async function makeOffer() {
+  initPC();
+  dc = pc.createDataChannel('chat');
+  setupDC();
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  sendSignal(pc.localDescription);
+}
+
+async function handleSignal(data) {
+  initPC();
+
+  if(data.type === 'offer') {
+    await pc.setRemoteDescription(data);
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    sendSignal(pc.localDescription);
+  }
+
+  if(data.type === 'answer') {
+    await pc.setRemoteDescription(data);
+  }
+
+  if(data.type === 'ice') {
+    await pc.addIceCandidate(data.candidate);
+  }
+}
+
+// === 4. KIRIM SIGNAL ===
+function sendSignal(data) {
+  if(signaling === 'ably' && ablyChannel) {
+    ablyChannel.publish('signal', data);
+  } else if(signaling === 'peerjs' && conn?.open) {
+    conn.send(JSON.stringify({signal: data}));
+  }
+}
+
+// PeerJS data connection handler
+function setupDataConn() {
+  conn.on('data', d => {
+    try {
+      const obj = JSON.parse(d);
+      if(obj.signal) handleSignal(obj.signal);
+      else log('<b>Peer:</b> '+d);
+    } catch {
+      log('<b>Peer:</b> '+d);
+    }
+  });
+}
+
+function setupDC() {
+  dc.onopen = () => log('<span class="ok">✓ DataChannel Open!</span>');
+  dc.onmessage = e => {
+    if(typeof e.data === 'string') log('<b>Peer:</b> '+e.data);
+    else {
+      const url = URL.createObjectURL(e.data);
+      log('<b>📁 File:</b> <a href="'+url+'" download>Download '+e.data.size+' bytes</a>');
+    }
+  };
+}
+
+// === 5. UI FUNCTIONS ===
+function sendMsg() {
+  const m = document.getElementById('msg').value;
+  if(dc?.readyState === 'open') {
+    dc.send(m);
+    log('<b>Kamu:</b> '+m);
+    document.getElementById('msg').value = '';
+  }
+}
+
+document.getElementById('msg').onkeypress = e => {
+  if(e.key === 'Enter') sendMsg();
+};
+
+document.getElementById('file').onchange = e => {
+  const f = e.target.files[0];
+  if(dc?.readyState === 'open') {
+    dc.send(f);
+    log('<b>Kirim:</b> '+f.name+' '+Math.round(f.size/1024)+'KB');
+  }
+};
+
+async function toggleCam() {
+  if(localStream) {
+    localStream.getTracks().forEach(t => t.stop());
+    document.getElementById('local').srcObject = null;
+    localStream = null;
+    return;
+  }
+  localStream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
+  document.getElementById('local').srcObject = localStream;
+  localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+}
+
+// === 6. BOOT ===
+(async () => {
+  const ok = await initAbly();
+  if(!ok) await initPeerJS();
+})();
 </script>
-<input id="msg"><button onclick="send()">Send</button>
+</body>
+</html>
