@@ -1,191 +1,343 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Peer-to-Peer Chat & Media</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>P2P Connection</title>
 <style>
-  body { font-family: Arial, sans-serif; margin: 20px; }
-  video { width: 300px; height: 200px; background: #000; margin: 5px; }
-  #videos { display: flex; flex-wrap: wrap; }
-  #messages { height: 200px; border: 1px solid #ccc; overflow-y: auto; padding: 5px; }
-  #fileInput { margin-top: 10px; }
+body {
+  background: #0f172a;
+  color: #e2e8f0;
+  font-family: system-ui, sans-serif;
+  margin: 0;
+  padding: 20px;
+}
+.wrap {
+  max-width: 900px;
+  margin: auto;
+}
+.card {
+  background: #1e293b;
+  padding: 15px;
+  border-radius: 12px;
+  margin: 10px 0;
+}
+button {
+  background: #3b82f6;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  margin: 4px;
+}
+button:hover {
+  background: #2563eb;
+}
+#log {
+  height: 220px;
+  overflow-y: auto;
+  background: #020617;
+  padding: 10px;
+  border-radius: 8px;
+  font-family: monospace;
+  font-size: 12px;
+}
+video {
+  width: 49%;
+  background: #000;
+  border-radius: 8px;
+  margin-top: 10px;
+}
+input {
+  padding: 8px;
+  background: #020617;
+  border: 1px solid #334155;
+  color: #e2e8f0;
+  border-radius: 6px;
+}
+#status {
+  margin-bottom: 10px;
+  font-size: 12px;
+}
 </style>
 </head>
 <body>
-<h2>Peer-to-Peer Chat & Media</h2>
 
-<div id="videos">
-  <video id="localVideo" autoplay muted></video>
-  <video id="remoteVideo" autoplay></video>
+<div class="wrap">
+<h2>📡 Room: <span id="roomName"></span></h2>
+<div id="status">Loading...</div>
+<button onclick="copyLink()">📋 Copy Link Room</button>
+
+<div class="card" id="chat" style="display:none">
+<div id="log"></div>
+<div style="margin-top:10px;">
+  <input id="msg" placeholder="Ketik Enter" style="width:70%">
+  <button onclick="sendMsg()">Send</button>
+</div>
+<br>
+<button onclick="fileInput.click()">📁 File</button>
+<input type="file" id="fileInput" style="display:none" multiple>
+<button onclick="toggleCamera()">📹 Camera</button>
+</div>
+<div style="display:flex; justify-content: space-between;">
+  <video id="local" autoplay muted playsinline></video>
+  <video id="remote" autoplay playsinline></video>
+</div>
 </div>
 
-<div>
-  <button id="startBtn">Start Local Media</button>
-  <button id="callBtn">Call</button>
-</div>
-
-<h3>Chat</h3>
-<div id="messages"></div>
-<input type="text" id="chatInput" placeholder="Type a message" />
-<button id="sendBtn">Send</button>
-
-<h3>File Transfer</h3>
-<input type="file" id="fileInput" />
-<button id="sendFileBtn">Send File</button>
-
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script>
-const signalingUrl = 'wss://sabas.pages.dev/signaling-worker'; // Replace with your server URL
-const ws = new WebSocket(signalingUrl);
-let localStream;
-let peerConnection;
-const config = {
-  iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+const params = new URLSearchParams(location.search);
+const room = params.get('room') || 'default';
+document.getElementById('roomName').textContent = room;
+
+const logEl = document.getElementById('log');
+const setStatus = msg => {
+  document.getElementById('status').innerHTML = msg;
+};
+const log = msg => {
+  logEl.innerHTML += msg + '<br>';
+  logEl.scrollTop = logEl.scrollHeight;
 };
 
-// Elements
-const localVideo = document.getElementById('localVideo');
-const remoteVideo = document.getElementById('remoteVideo');
-const startBtn = document.getElementById('startBtn');
-const callBtn = document.getElementById('callBtn');
-const messagesDiv = document.getElementById('messages');
-const chatInput = document.getElementById('chatInput');
-const sendBtn = document.getElementById('sendBtn');
-const fileInput = document.getElementById('fileInput');
-const sendFileBtn = document.getElementById('sendFileBtn');
-
-let dataChannel;
-
-// Handle WebSocket signaling
-ws.onopen = () => {
-  appendMessage('Connected to signaling server');
+let peer, conn, peerId, peerRole, peerIdTarget;
+const peerConfig = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun.relay.metered.ca:80' }
+  ]
 };
 
-ws.onmessage = async (message) => {
-  const data = JSON.parse(message.data);
-  if (data.offer) {
-    await handleOffer(data.offer);
-  } else if (data.answer) {
-    await handleAnswer(data.answer);
-  } else if (data.iceCandidate) {
-    await handleIceCandidate(data.iceCandidate);
+const myId = room + '-' + Math.random().toString(36).slice(2,8);
+const targetId = room + '-host';
+
+const isHost = () => myId === targetId;
+
+peer = new Peer(myId, { debug: 1 });
+
+peer.on('open', id => {
+  peerId = id;
+  log('ID: ' + id);
+  
+  if (isHost()) {
+    peerRole = 'host';
+    setStatus('<span class="warn">Kamu Host. Menunggu peer bergabung...</span>');
+    log('<span class="ok">Mode: Host / Offerer</span>');
+  } else {
+    peerRole = 'client';
+    setStatus('<span class="warn">Menghubungkan ke Host...</span>');
+    log('Mode: Client / Answerer');
+    connectToHost();
   }
-};
+});
 
-// Functions
-function appendMessage(msg) {
-  const p = document.createElement('p');
-  p.innerText = msg;
-  messagesDiv.appendChild(p);
-  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+peer.on('connection', c => {
+  if (conn) {
+    // Jika sudah ada koneksi, tolak
+    log('<span class="err">Koneksi lain ditolak.</span>');
+    c.close();
+    return;
+  }
+  conn = c;
+  setupConnection();
+  if (peerRole === 'host') {
+    // Jika host, buat offer
+    setTimeout(createOffer, 500);
+  }
+});
+
+// Connect ke host
+function connectToHost() {
+  conn = peer.connect(targetId, { reliable: true });
+  conn.on('open', () => {
+    setStatus('<span class="ok">✓ Terhubung ke Host</span>');
+    setupConnection();
+  });
+  conn.on('error', e => {
+    log('<span class="err">Gagal connect ke Host: ' + e.type + '</span>');
+    setTimeout(connectToHost, 3000);
+  });
 }
 
-startBtn.onclick = async () => {
-  try {
-    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    localVideo.srcObject = localStream;
-    appendMessage('Local media started');
-  } catch (err) {
-    console.error('Error accessing media devices.', err);
-  }
-};
+function setupConnection() {
+  conn.on('data', data => {
+    try {
+      const msgObj = JSON.parse(data);
+      if (msgObj.signal) handleSignal(msgObj.signal);
+      else if (msgObj.message) log('<b>Peer:</b> ' + msgObj.message);
+      else if (msgObj.fileName) handleReceivedFile(msgObj);
+    } catch (e) {
+      log('<b>Peer:</b> ' + data);
+    }
+  });
+}
 
-callBtn.onclick = async () => {
-  createPeerConnection();
-  if (localStream) {
-    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-  }
-  dataChannel = peerConnection.createDataChannel('chat');
-  setupDataChannel();
+// Initialize RTCPeerConnection
+let pc, dataChannel;
+async function initPeerConnection() {
+  if (pc) return;
+  pc = new RTCPeerConnection(peerConfig);
 
-  const offer = await peerConnection.createOffer();
-  await peerConnection.setLocalDescription(offer);
-  sendMessage({ offer });
-};
-
-function createPeerConnection() {
-  peerConnection = new RTCPeerConnection(config);
-
-  peerConnection.onicecandidate = ({ candidate }) => {
-    if (candidate) {
-      sendMessage({ iceCandidate: candidate });
+  pc.onicecandidate = e => {
+    if (e.candidate && conn?.open) {
+      conn.send(JSON.stringify({ signal: { type: 'ice', candidate: e.candidate } }));
     }
   };
 
-  peerConnection.ontrack = (event) => {
-    remoteVideo.srcObject = event.streams[0];
+  pc.onconnectionstatechange = () => {
+    log('Connection state: ' + pc.connectionState);
+    if (pc.connectionState === 'connected') {
+      document.getElementById('chat').style.display = 'block';
+      log('<span class="ok">✓ P2P Connected!</span>');
+    }
   };
 
-  peerConnection.ondatachannel = (event) => {
-    dataChannel = event.channel;
+  pc.ontrack = e => {
+    document.getElementById('remote').srcObject = e.streams[0];
+  };
+
+  pc.ondatachannel = e => {
+    dataChannel = e.channel;
     setupDataChannel();
   };
 }
 
+// Create offer (host)
+async function createOffer() {
+  await initPeerConnection();
+  dataChannel = pc.createDataChannel('chat');
+  setupDataChannel();
+
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  sendSignal({ type: 'offer', sdp: pc.localDescription });
+}
+
+// Handle incoming signals
+async function handleSignal(signal) {
+  await initPeerConnection();
+
+  if (signal.type === 'offer') {
+    await pc.setRemoteDescription(new RTCSessionDescription(signal));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    sendSignal({ type: 'answer', sdp: pc.localDescription });
+  } else if (signal.type === 'answer') {
+    await pc.setRemoteDescription(new RTCSessionDescription(signal));
+  } else if (signal.type === 'ice') {
+    try {
+      await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+    } catch (e) {
+      console.error('Error adding ICE candidate:', e);
+    }
+  }
+}
+
+// Send signal through data connection
+function sendSignal(signal) {
+  if (conn && conn.open) {
+    conn.send(JSON.stringify({ signal }));
+  }
+}
+
+// Setup DataChannel
 function setupDataChannel() {
   dataChannel.onopen = () => {
-    appendMessage('Data channel opened');
+    log('<span class="ok">✓ DataChannel terbuka!</span>');
   };
-  dataChannel.onmessage = (event) => {
-    if (typeof event.data === 'string') {
-      appendMessage('Peer: ' + event.data);
+  dataChannel.onmessage = e => {
+    if (typeof e.data === 'string') {
+      // Pesan teks
+      try {
+        const msgObj = JSON.parse(e.data);
+        if (msgObj.fileName && msgObj.fileData) {
+          // Ini file
+          handleReceivedFile(msgObj);
+        } else {
+          log('<b>Peer:</b> ' + msgObj.message);
+        }
+      } catch {
+        log('<b>Peer:</b> ' + e.data);
+      }
     } else {
-      // Handle received file
-      const url = URL.createObjectURL(event.data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'received_file';
-      a.click();
-      appendMessage('Received a file');
+      // Biner (file)
+      handleFileBlob(e.data);
     }
   };
 }
 
-async function handleOffer(offer) {
-  createPeerConnection();
+// Kirim pesan teks
+function sendMsg() {
+  const msg = document.getElementById('msg').value.trim();
+  if (msg && dataChannel?.readyState === 'open') {
+    dataChannel.send(JSON.stringify({ message: msg }));
+    log('<b>Kamu:</b> ' + msg);
+    document.getElementById('msg').value = '';
+  }
+}
+document.getElementById('msg').addEventListener('keypress', e => {
+  if (e.key === 'Enter') sendMsg();
+});
+
+// Kirim file
+const fileInput = document.getElementById('fileInput');
+fileInput.onchange = () => {
+  const files = Array.from(fileInput.files);
+  files.forEach(file => sendFile(file));
+};
+function sendFile(file) {
+  if (dataChannel?.readyState !== 'open') return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const arrayBuffer = reader.result;
+    dataChannel.send(arrayBuffer);
+    log('<b>Kirim File:</b> ' + file.name);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// Handle received file
+function handleReceivedFile(obj) {
+  const { fileName, fileData } = obj;
+  const blob = new Blob([fileData], { type: 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  log('<b>📁 File:</b> <a href="' + url + '" download="' + fileName + '">' + fileName + '</a>');
+}
+
+// Handle received Blob (binary file)
+function handleFileBlob(blob) {
+  const url = URL.createObjectURL(blob);
+  log('<b>📁 File:</b> <a href="' + url + '" download="file">' + 'Received File' + '</a>');
+}
+
+// Toggle camera
+let localStream = null;
+async function toggleCamera() {
   if (localStream) {
-    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+    localStream.getTracks().forEach(t => t.stop());
+    document.getElementById('local').srcObject = null;
+    localStream = null;
+    return;
   }
-  await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-  const answer = await peerConnection.createAnswer();
-  await peerConnection.setLocalDescription(answer);
-  sendMessage({ answer });
-}
-
-async function handleAnswer(answer) {
-  await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-}
-
-async function handleIceCandidate(candidate) {
   try {
-    await peerConnection.addIceCandidate(candidate);
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    document.getElementById('local').srcObject = localStream;
+    // Add tracks to peer connection
+    if (pc) {
+      localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+    }
   } catch (e) {
-    console.error('Error adding received ice candidate', e);
+    alert('Gagal mengakses kamera/mikrofon: ' + e.message);
   }
 }
 
-function sendMessage(message) {
-  ws.send(JSON.stringify(message));
+// Salin URL
+function copyLink() {
+  navigator.clipboard.writeText(location.href);
+  alert('Link disalin!');
 }
-
-// Send chat message
-sendBtn.onclick = () => {
-  const message = chatInput.value;
-  if (message && dataChannel && dataChannel.readyState === 'open') {
-    dataChannel.send(message);
-    appendMessage('Me: ' + message);
-    chatInput.value = '';
-  }
-};
-
-// Send file
-sendFileBtn.onclick = () => {
-  const file = fileInput.files[0];
-  if (file && dataChannel && dataChannel.readyState === 'open') {
-    dataChannel.send(file);
-    appendMessage('Sent a file');
-  }
-};
 </script>
+
 </body>
 </html>
