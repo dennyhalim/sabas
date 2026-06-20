@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Local P2P Chat & Video</title>
+  <style>
+    body { font-family: Arial, sans-serif; }
+    video { width: 300px; height: 200px; background: #000; margin: 5px; }
+    #chat { width: 600px; height: 200px; }
+  </style>
+</head>
+<body>
+<h1>Local Peer-to-Peer Chat & Video Conference</h1>
+
+<div>
+  <video id="localVideo" autoplay muted></video>
+  <video id="remoteVideo" autoplay></video>
+</div>
+
+<div>
+  <h3>Chat</h3>
+  <textarea id="chat" readonly></textarea><br>
+  <input type="text" id="messageInput" placeholder="Type message"/>
+  <button onclick="sendMessage()">Send</button>
+</div>
+
+<div>
+  <h3>File Transfer</h3>
+  <input type="file" id="fileInput"/>
+  <button onclick="sendFile()">Send File</button>
+  <div id="fileStatus"></div>
+</div>
+
+<script>
+const signalingUrl = 'wss://yourdomain.com/signaling'; // change to your URL
+const ws = new WebSocket(signalingUrl);
+
+let peerConnection;
+let dataChannel;
+
+const localVideo = document.getElementById('localVideo');
+const remoteVideo = document.getElementById('remoteVideo');
+const chatBox = document.getElementById('chat');
+const fileInput = document.getElementById('fileInput');
+const fileStatus = document.getElementById('fileStatus');
+
+const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+
+async function start() {
+  peerConnection = new RTCPeerConnection(configuration);
+
+  // Media stream
+  const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+  localVideo.srcObject = stream;
+  stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
+
+  // ICE candidates
+  peerConnection.onicecandidate = event => {
+    if (event.candidate) {
+      sendSignal({ 'ice': event.candidate });
+    }
+  };
+
+  // Remote stream
+  peerConnection.ontrack = event => {
+    remoteVideo.srcObject = event.streams[0];
+  };
+
+  // Data channel for chat and file transfer
+  dataChannel = peerConnection.createDataChannel('chat');
+  dataChannel.onmessage = handleDataMessage;
+
+  peerConnection.ondatachannel = event => {
+    event.channel.onmessage = handleDataMessage;
+  };
+
+  // Create offer
+  const offer = await peerConnection.createOffer();
+  await peerConnection.setLocalDescription(offer);
+  sendSignal({ 'offer': peerConnection.localDescription });
+}
+
+function handleDataMessage(event) {
+  if (typeof event.data === 'string') {
+    // Chat message
+    chatBox.value += 'Peer: ' + event.data + '\n';
+  } else {
+    // File data
+    const arrayBuffer = event.data;
+    // Handle file reception (implement as needed)
+    // For simplicity, just show a message
+    fileStatus.innerText = 'Received a file (' + arrayBuffer.byteLength + ' bytes)';
+  }
+}
+
+function sendSignal(data) {
+  ws.send(JSON.stringify(data));
+}
+
+ws.onmessage = async (event) => {
+  const data = JSON.parse(event.data);
+  if (data.offer) {
+    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+    const answer = await peerConnection.createAnswer();
+    await peerConnection.setLocalDescription(answer);
+    sendSignal({ 'answer': peerConnection.localDescription });
+  } else if (data.answer) {
+    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+  } else if (data.ice) {
+    try {
+      await peerConnection.addIceCandidate(new RTCIceCandidate(data.ice));
+    } catch (e) {
+      console.error(e);
+    }
+  }
+};
+
+// Send chat message
+function sendMessage() {
+  const msg = document.getElementById('messageInput').value;
+  dataChannel.send(msg);
+  chatBox.value += 'Me: ' + msg + '\n';
+}
+
+// Send file
+function sendFile() {
+  const file = document.getElementById('fileInput').files[0];
+  if (file && peerConnection.connectionState === 'connected') {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const arrayBuffer = reader.result;
+      // Send as binary
+      dataChannel.send(arrayBuffer);
+      fileStatus.innerText = 'File sent (' + arrayBuffer.byteLength + ' bytes)';
+    };
+    reader.readAsArrayBuffer(file);
+  } else {
+    alert('No file selected or connection not established.');
+  }
+}
+
+// Start connection
+start();
+</script>
+</body>
+</html>
