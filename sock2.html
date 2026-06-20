@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Peer-to-Peer Chat & Media</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 20px; }
+  video { width: 300px; height: 200px; background: #000; margin: 5px; }
+  #videos { display: flex; flex-wrap: wrap; }
+  #messages { height: 200px; border: 1px solid #ccc; overflow-y: auto; padding: 5px; }
+  #fileInput { margin-top: 10px; }
+</style>
+</head>
+<body>
+<h2>Peer-to-Peer Chat & Media</h2>
+
+<div id="videos">
+  <video id="localVideo" autoplay muted></video>
+  <video id="remoteVideo" autoplay></video>
+</div>
+
+<div>
+  <button id="startBtn">Start Local Media</button>
+  <button id="callBtn">Call</button>
+</div>
+
+<h3>Chat</h3>
+<div id="messages"></div>
+<input type="text" id="chatInput" placeholder="Type a message" />
+<button id="sendBtn">Send</button>
+
+<h3>File Transfer</h3>
+<input type="file" id="fileInput" />
+<button id="sendFileBtn">Send File</button>
+
+<script>
+const signalingUrl = 'wss://yourdomain.com/signaling'; // Replace with your server URL
+const ws = new WebSocket(signalingUrl);
+let localStream;
+let peerConnection;
+const config = {
+  iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+};
+
+// Elements
+const localVideo = document.getElementById('localVideo');
+const remoteVideo = document.getElementById('remoteVideo');
+const startBtn = document.getElementById('startBtn');
+const callBtn = document.getElementById('callBtn');
+const messagesDiv = document.getElementById('messages');
+const chatInput = document.getElementById('chatInput');
+const sendBtn = document.getElementById('sendBtn');
+const fileInput = document.getElementById('fileInput');
+const sendFileBtn = document.getElementById('sendFileBtn');
+
+let dataChannel;
+
+// Handle WebSocket signaling
+ws.onopen = () => {
+  appendMessage('Connected to signaling server');
+};
+
+ws.onmessage = async (message) => {
+  const data = JSON.parse(message.data);
+  if (data.offer) {
+    await handleOffer(data.offer);
+  } else if (data.answer) {
+    await handleAnswer(data.answer);
+  } else if (data.iceCandidate) {
+    await handleIceCandidate(data.iceCandidate);
+  }
+};
+
+// Functions
+function appendMessage(msg) {
+  const p = document.createElement('p');
+  p.innerText = msg;
+  messagesDiv.appendChild(p);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+startBtn.onclick = async () => {
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    localVideo.srcObject = localStream;
+    appendMessage('Local media started');
+  } catch (err) {
+    console.error('Error accessing media devices.', err);
+  }
+};
+
+callBtn.onclick = async () => {
+  createPeerConnection();
+  if (localStream) {
+    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+  }
+  dataChannel = peerConnection.createDataChannel('chat');
+  setupDataChannel();
+
+  const offer = await peerConnection.createOffer();
+  await peerConnection.setLocalDescription(offer);
+  sendMessage({ offer });
+};
+
+function createPeerConnection() {
+  peerConnection = new RTCPeerConnection(config);
+
+  peerConnection.onicecandidate = ({ candidate }) => {
+    if (candidate) {
+      sendMessage({ iceCandidate: candidate });
+    }
+  };
+
+  peerConnection.ontrack = (event) => {
+    remoteVideo.srcObject = event.streams[0];
+  };
+
+  peerConnection.ondatachannel = (event) => {
+    dataChannel = event.channel;
+    setupDataChannel();
+  };
+}
+
+function setupDataChannel() {
+  dataChannel.onopen = () => {
+    appendMessage('Data channel opened');
+  };
+  dataChannel.onmessage = (event) => {
+    if (typeof event.data === 'string') {
+      appendMessage('Peer: ' + event.data);
+    } else {
+      // Handle received file
+      const url = URL.createObjectURL(event.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'received_file';
+      a.click();
+      appendMessage('Received a file');
+    }
+  };
+}
+
+async function handleOffer(offer) {
+  createPeerConnection();
+  if (localStream) {
+    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+  }
+  await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+  const answer = await peerConnection.createAnswer();
+  await peerConnection.setLocalDescription(answer);
+  sendMessage({ answer });
+}
+
+async function handleAnswer(answer) {
+  await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+}
+
+async function handleIceCandidate(candidate) {
+  try {
+    await peerConnection.addIceCandidate(candidate);
+  } catch (e) {
+    console.error('Error adding received ice candidate', e);
+  }
+}
+
+function sendMessage(message) {
+  ws.send(JSON.stringify(message));
+}
+
+// Send chat message
+sendBtn.onclick = () => {
+  const message = chatInput.value;
+  if (message && dataChannel && dataChannel.readyState === 'open') {
+    dataChannel.send(message);
+    appendMessage('Me: ' + message);
+    chatInput.value = '';
+  }
+};
+
+// Send file
+sendFileBtn.onclick = () => {
+  const file = fileInput.files[0];
+  if (file && dataChannel && dataChannel.readyState === 'open') {
+    dataChannel.send(file);
+    appendMessage('Sent a file');
+  }
+};
+</script>
+</body>
+</html>
