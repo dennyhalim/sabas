@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>P2P Room</title>
+<title>P2P Fix</title>
 <style>
 body{background:#0f172a;color:#e2e8f0;font:14px system-ui;margin:0;padding:20px}
 .wrap{max-width:900px;margin:auto}
@@ -20,6 +20,7 @@ input{padding:8px;background:#020617;border:1px solid #334155;color:#e2e8f0;bord
 <div class="wrap">
 <h2>📡 Room: <span id="roomName"></span></h2>
 <div id="status">Loading...</div>
+<button onclick="copyLink()">📋 Copy Link Room</button>
 
 <div class="card" id="chat" style="display:none">
 <div id="log"></div>
@@ -31,16 +32,13 @@ input{padding:8px;background:#020617;border:1px solid #334155;color:#e2e8f0;bord
 <button onclick="toggleCam()">📹 Camera</button>
 <div>
 <video id="local" autoplay muted playsinline></video>
-<video id="remote" autoplay playsinline></video>
+<video id="remote" autoplay muted playsinline></video>
 </div>
 </div>
 </div>
 
-<script src="https://cdn.ably.com/lib/ably.min.js"></script>
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script>
-// === SETTING ===
-const ABLY_API_KEY = ''; // Kosongin = skip Ably, langsung PeerJS
 const params = new URLSearchParams(location.search);
 const room = params.get('room') || 'default';
 document.getElementById('roomName').textContent = room;
@@ -52,47 +50,166 @@ const log = t => {
 const setStatus = t => document.getElementById('status').innerHTML = t;
 
 let pc, dc, localStream;
-let signaling = null;
-let ablyChannel = null;
-let peer = null;
-let conn = null;
+let peer, conn;
+let isOfferer = false;
 
-const config = {iceServers:[{urls:'stun:stun.l.google.com:19302'}]};
+const config = {iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun.relay.metered.ca:80'}]};
 
-// === BOOT: Cek key dulu ===
-(async () => {
-  if(ABLY_API_KEY && ABLY_API_KEY.trim() !== '') {
-    const ok = await initAbly();
-    if(!ok) await initPeerJS();
+// === KUNCI FIX: ID unik + role ===
+const myId = room + '-' + Math.random().toString(36).slice(2,8);
+const targetId = room + '-host';
+
+peer = new Peer(myId, {debug: 1});
+
+peer.on('open', id => {
+  log('ID saya: '+id);
+
+  if(myId === targetId) {
+    isOfferer = true;
+    setStatus('<span class="warn">Kamu Host. Tunggu peer join...</span>');
+    log('<span class="ok">Mode: Host/Offerer</span>');
   } else {
-    log('<span class="warn">⚠ ABLY_API_KEY kosong, skip ke PeerJS</span>');
-    await initPeerJS();
+    setStatus('<span class="warn">Connect ke Host...</span>');
+    log('Mode: Client/Answerer');
+    setTimeout(connectToHost, 1000);
   }
-})();
+});
 
-// === ABLY ===
-async function initAbly() {
-  try {
-    setStatus('<span class="warn">Coba Ably...</span>');
-    const ably = new Ably.Realtime(ABLY_API_KEY);
-    await ably.connection.once('connected');
+peer.on('connection', c => {
+  conn = c;
+  setupConn();
+  if(isOfferer) setTimeout(makeOffer, 500);
+});
 
-    ablyChannel = ably.channels.get(room);
-    await ablyChannel.subscribe('signal', msg => handleSignal(msg.data));
+function connectToHost() {
+  conn = peer.connect(targetId, {reliable: true});
+  conn.on('open', () => {
+    setStatus('<span class="ok">✓ Connected to Host</span>');
+    setupConn();
+  });
+  conn.on('error', e => {
+    log('<span class="err">Gagal connect Host: '+e.type+'</span>');
+    setTimeout(connectToHost, 3000);
+  });
+}
 
-    signaling = 'ably';
-    setStatus('<span class="ok">✓ Ably connected</span>');
-    log('<span class="ok">Signaling: Ably</span>');
-    startWebRTC(true);
-    return true;
-  } catch(e) {
-    log('<span class="err">✗ Ably error: '+e.message+'</span>');
-    return false;
+function setupConn() {
+  conn.on('data', d => {
+    try {
+      const obj = JSON.parse(d);
+      if(obj.signal) handleSignal(obj.signal);
+      else log('<b>Peer:</b> '+d);
+    } catch {
+      log('<b>Peer:</b> '+d);
+    }
+  });
+}
+
+function initPC() {
+  if(pc) return;
+  pc = new RTCPeerConnection(config);
+
+  pc.onicecandidate = e => {
+    if(e.candidate && conn?.open) {
+      conn.send(JSON.stringify({signal: {type:'ice', candidate:e.candidate}}));
+    }
+  };
+
+  pc.onconnectionstatechange = () => {
+    log('State: '+pc.connectionState);
+    if(pc.connectionState === 'connected') {
+      document.getElementById('chat').style.display = 'block';
+      log('<span class="ok">✓ P2P Connected!</span>');
+    }
+  };
+
+  pc.ontrack = e => {
+    document.getElementById('remote').srcObject = e.streams[0];
+  };
+
+  pc.ondatachannel = e => {
+    dc = e.channel;
+    setupDC();
+  };
+}
+
+async function makeOffer() {
+  initPC();
+  dc = pc.createDataChannel('chat');
+  setupDC();
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  conn.send(JSON.stringify({signal: pc.localDescription}));
+}
+
+async function handleSignal(data) {
+  initPC();
+
+  if(data.type === 'offer') {
+    await pc.setRemoteDescription(data);
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    conn.send(JSON.stringify({signal: pc.localDescription}));
+  }
+
+  if(data.type === 'answer') {
+    await pc.setRemoteDescription(data);
+  }
+
+  if(data.type === 'ice') {
+    try { await pc.addIceCandidate(data.candidate); } catch(e) {}
   }
 }
 
-// === PEERJS FALLBACK ===
-async function initPeerJS() {
-  try {
-    setStatus('<span class="warn">Pake PeerJS Cloud...</span>');
-    peer = new Peer(room
+function setupDC() {
+  dc.onopen = () => log('<span class="ok">✓ DataChannel Open!</span>');
+  dc.onmessage = e => {
+    if(typeof e.data === 'string') log('<b>Peer:</b> '+e.data);
+    else {
+      const url = URL.createObjectURL(e.data);
+      log('<b>📁 File:</b> <a href="'+url+'" download>Download</a>');
+    }
+  };
+}
+
+// UI
+function sendMsg() {
+  const m = document.getElementById('msg').value;
+  if(dc?.readyState === 'open') {
+    dc.send(m);
+    log('<b>Kamu:</b> '+m);
+    document.getElementById('msg').value = '';
+  }
+}
+
+document.getElementById('msg').onkeypress = e => {
+  if(e.key === 'Enter') sendMsg();
+};
+
+document.getElementById('file').onchange = e => {
+  const f = e.target.files[0];
+  if(dc?.readyState === 'open') {
+    dc.send(f);
+    log('<b>Kirim:</b> '+f.name);
+  }
+};
+
+async function toggleCam() {
+  if(localStream) {
+    localStream.getTracks().forEach(t => t.stop());
+    document.getElementById('local').srcObject = null;
+    localStream = null;
+    return;
+  }
+  localStream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
+  document.getElementById('local').srcObject = localStream;
+  localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+}
+
+function copyLink() {
+  navigator.clipboard.writeText(location.href);
+  alert('Link copied!');
+}
+</script>
+</body>
+</html>
