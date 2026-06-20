@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LocalShare P2P</title>
+<style>
+body{font-family:system-ui;background:#0f172a;color:#e2e8f0;margin:0;padding:20px}
+.wrap{max-width:800px;margin:0 auto}
+.card{background:#1e293b;padding:20px;border-radius:12px;margin-bottom:15px}
+button{background:#3b82f6;border:0;color:white;padding:10px 16px;border-radius:8px;cursor:pointer}
+button:hover{background:#2563eb}
+input[type=file]{display:none}
+#log{height:200px;overflow:auto;background:#020617;padding:10px;border-radius:8px;font:13px monospace}
+.msg{margin:5px 0}
+.me{color:#60a5fa}.peer{color:#34d399}
+video{width:100%;max-height:240px;background:#000;border-radius:8px}
+#qr canvas{margin:10px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h2>📡 LocalShare P2P</h2>
+
+<div class="card">
+<b>Step 1: Connect</b><br>
+<button id="create">Buat Room</button>
+<button id="join">Join Room</button>
+<div id="qr"></div>
+<input id="offer" placeholder="Paste offer/answer di sini" style="width:100%;margin-top:10px">
+<button id="sendOffer">Send</button>
+</div>
+
+<div class="card" id="chatBox" style="display:none">
+<b>Step 2: Chat + File + A/V</b>
+<div id="log"></div>
+<input id="msg" placeholder="Ketik pesan..." style="width:70%">
+<button id="sendMsg">Send</button>
+<br><br>
+<label><button onclick="file.click()">📁 Kirim File</button></label>
+<input type="file" id="file">
+<br><br>
+<button id="startCam">📹 Start Camera</button>
+<button id="stopCam">⏹ Stop</button>
+<video id="localVideo" autoplay muted playsinline></video>
+<video id="remoteVideo" autoplay playsinline></video>
+</div>
+</div>
+
+<script src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
+<script>
+let pc, dc, localStream;
+const config = {iceServers:[{urls:'stun:stun.l.google.com:19302'}]};
+
+const log = t => {
+  document.getElementById('log').innerHTML += `<div class="msg">${t}</div>`;
+  document.getElementById('log').scrollTop = 99999;
+};
+
+// Buat peer connection
+function initPC() {
+  pc = new RTCPeerConnection(config);
+  pc.onicecandidate = e => {
+    if(e.candidate) return;
+    document.getElementById('offer').value = JSON.stringify(pc.localDescription);
+    makeQR(JSON.stringify(pc.localDescription));
+  };
+  pc.ondatachannel = e => {
+    dc = e.channel;
+    setupDataChannel();
+  };
+  pc.ontrack = e => {
+    document.getElementById('remoteVideo').srcObject = e.streams[0];
+  };
+}
+
+// Data channel untuk chat + file
+function setupDataChannel() {
+  dc.onopen = () => {
+    log('<span class="peer">✓ Connected!</span>');
+    document.getElementById('chatBox').style.display = 'block';
+  };
+  dc.onmessage = e => {
+    if(typeof e.data === 'string') {
+      log('<span class="peer">Peer: '+e.data+'</span>');
+    } else {
+      // File blob
+      const url = URL.createObjectURL(e.data);
+      log('<span class="peer">📁 File diterima: <a href="'+url+'" download>Download</a></span>');
+    }
+  };
+}
+
+// Buat room
+document.getElementById('create').onclick = async () => {
+  initPC();
+  dc = pc.createDataChannel('chat');
+  setupDataChannel();
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+};
+
+// Join room
+document.getElementById('join').onclick = async () => {
+  initPC();
+};
+
+// Kirim offer/answer
+document.getElementById('sendOffer').onclick = async () => {
+  const data = JSON.parse(document.getElementById('offer').value);
+  if(data.type === 'offer') {
+    await pc.setRemoteDescription(data);
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+  } else {
+    await pc.setRemoteDescription(data);
+  }
+};
+
+// Chat
+document.getElementById('sendMsg').onclick = () => {
+  const m = document.getElementById('msg').value;
+  if(dc && dc.readyState === 'open') {
+    dc.send(m);
+    log('<span class="me">Me: '+m+'</span>');
+    document.getElementById('msg').value = '';
+  }
+};
+
+// File transfer
+document.getElementById('file').onchange = e => {
+  const file = e.target.files[0];
+  if(dc && dc.readyState === 'open') {
+    dc.send(file);
+    log('<span class="me">📁 Kirim: '+file.name+' '+Math.round(file.size/1024)+'KB</span>');
+  }
+};
+
+// Camera
+document.getElementById('startCam').onclick = async () => {
+  localStream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
+  document.getElementById('localVideo').srcObject = localStream;
+  localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+};
+
+document.getElementById('stopCam').onclick = () => {
+  localStream.getTracks().forEach(t => t.stop());
+};
+
+// QR code
+function makeQR(text) {
+  document.getElementById('qr').innerHTML = '';
+  new QRCodeStyling({
+    width:200, height:200, data:text,
+    dotsOptions:{color:"#3b82f6"}, backgroundOptions:{color:"#1e293b"}
+  }).append(document.getElementById('qr'));
+}
+</script>
+</body>
+</html>
