@@ -6,7 +6,7 @@ export async function onRequest(context) {
     const url = new URL(context.request.url);
     const format = url.searchParams.get("format") || "html";
 
-    const opmlURL = new URL("../feeds.opml", url).toString();
+    const opmlURL = new URL("../../feeds.opml", url).toString();
 
     let opml = await fetch(opmlURL).then(r => r.text());
 
