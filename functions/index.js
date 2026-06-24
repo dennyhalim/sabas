@@ -109,6 +109,8 @@ function formatDate(dateString) {
  * Returns: Array<{ url, title, siteUrl }>
  */
 function parseOpml(opmlText) {
+  const title = cleanField(xmlText(opmlText, 'title')) || SITE_TITLE;
+
   const feeds = [];
   const outlinePattern = /<outline\b([^>]+)(?:\/>|>)/gi;
   let match;
@@ -125,7 +127,7 @@ function parseOpml(opmlText) {
     });
   }
 
-  return feeds;
+  return { title, feeds };
 }
 
 // ─── Feed parsing ─────────────────────────────────────────────────────────────
@@ -382,7 +384,7 @@ function renderPostCard(post) {
     </article>`;
 }
 
-function renderHtmlPage(posts, feeds, requestUrl) {
+function renderHtmlPage(posts, feeds, requestUrl, title) {
   const currentUrl = new URL(requestUrl);
 
   const formatUrl = (format) => {
@@ -408,7 +410,7 @@ function renderHtmlPage(posts, feeds, requestUrl) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${htmlEscape(SITE_TITLE)}</title>
+  <title>${htmlEscape(title)}</title>
   <style>
     ${THEME}
     ${POST_CARD_STYLES}
@@ -501,7 +503,7 @@ function renderHtmlPage(posts, feeds, requestUrl) {
           <path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/>
           <circle cx="5" cy="19" r="1" fill="currentColor"/>
         </svg>
-        ${htmlEscape(SITE_TITLE)}
+        ${htmlEscape(title)}
       </div>
 
       <div>
@@ -519,7 +521,7 @@ function renderHtmlPage(posts, feeds, requestUrl) {
 
     <main class="main">
       <header class="page-header">
-        <h1>${htmlEscape(SITE_TITLE)}</h1>
+        <h1>${htmlEscape(title)}</h1>
         <p>${posts.length} post${posts.length === 1 ? '' : 's'} from ${feeds.length} feed${feeds.length === 1 ? '' : 's'}</p>
       </header>
       ${postCardsHtml}
@@ -531,7 +533,7 @@ function renderHtmlPage(posts, feeds, requestUrl) {
 
 // ─── RSS renderer ─────────────────────────────────────────────────────────────
 
-function renderRssFeed(posts, requestUrl) {
+function renderRssFeed(posts, requestUrl, title) {
   const now      = new Date().toUTCString();
   const selfLink = htmlEscape(requestUrl);
 
@@ -548,7 +550,7 @@ function renderRssFeed(posts, requestUrl) {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>${htmlEscape(SITE_TITLE)} — Aggregated Feed</title>
+    <title>${htmlEscape(title)} — Aggregated Feed</title>
     <link>${selfLink}</link>
     <description>Aggregated RSS feed</description>
     <lastBuildDate>${now}</lastBuildDate>
@@ -564,7 +566,7 @@ function renderRssFeed(posts, requestUrl) {
 
 // ─── JS embed renderer ────────────────────────────────────────────────────────
 
-function renderJsEmbed(requestUrl) {
+function renderJsEmbed(requestUrl, title) {
   // Point the snippet at the iframe format of this same URL
   const iframeUrl = new URL(requestUrl);
   iframeUrl.searchParams.set('format', 'iframe');
@@ -596,7 +598,7 @@ function renderJsEmbed(requestUrl) {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>JS Embed — ${htmlEscape(SITE_TITLE)}</title>
+  <title>JS Embed — ${htmlEscape(title)}</title>
   <style>
     ${THEME}
     body {
@@ -648,7 +650,7 @@ function renderJsEmbed(requestUrl) {
 
 // ─── iFrame renderer ──────────────────────────────────────────────────────────
 
-function renderIframePage(posts) {
+function renderIframePage(posts, title) {
   const postCardsHtml = posts.length
     ? posts.map(renderPostCard).join('')
     : '<p style="color:var(--muted); padding:1rem">No posts found.</p>';
@@ -658,7 +660,7 @@ function renderIframePage(posts) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${htmlEscape(SITE_TITLE)}</title>
+  <title>${htmlEscape(title)}</title>
   <style>
     ${THEME}
     ${POST_CARD_STYLES}
@@ -797,7 +799,7 @@ export async function onRequest({ request, env }) {
 
   // ── Step 2: Parse the OPML into a feed list ───────────────────────────────
 
-  const feeds = parseOpml(opmlText);
+  const { title, feeds } = parseOpml(opmlText);
 
   if (feeds.length === 0) {
     return new Response(
@@ -814,16 +816,16 @@ export async function onRequest({ request, env }) {
 
   switch (format) {
     case 'rss':
-      return renderRssFeed(posts, url.toString());
+      return renderRssFeed(posts, url.toString(), title);
 
     case 'js':
-      return renderJsEmbed(url.toString());
+      return renderJsEmbed(url.toString(), title);
 
     case 'iframe':
-      return renderIframePage(posts);
+      return renderIframePage(posts, title);
 
     default:
-      return new Response(renderHtmlPage(posts, feeds, url.toString()), {
+      return new Response(renderHtmlPage(posts, feeds, url.toString(), title), {
         headers: { 'Content-Type': 'text/html; charset=utf-8' },
       });
   }
