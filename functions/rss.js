@@ -8,8 +8,7 @@
  *   GET /?opml=<url>&format=iframe    → iFrame-embeddable HTML
  *   POST / (body = OPML text)         → same format param applies
  *
- * Deploy: place this file at the root of a Cloudflare Pages project
- * as _worker.js  (or wrap in export default inside functions/[[path]].js)
+ * Deploy: place this file at functions/[[path]].js in a Cloudflare Pages project
  */
 
 const READER_TITLE   = 'RSS Reader';
@@ -590,8 +589,7 @@ Content-Type: text/xml
 // Main handler
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default {
-  async fetch(request, env, ctx) {
+export async function onRequest({ request, env, params }) {
     const url    = new URL(request.url);
     const format = (url.searchParams.get('format') || 'html').toLowerCase();
     const opmlParam = url.searchParams.get('opml');
@@ -648,5 +646,4 @@ export default {
       case 'iframe': return renderIframe(allPosts);
       default:       return renderHTML(allPosts, feeds, url.toString());
     }
-  },
-};
+}
