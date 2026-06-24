@@ -6,9 +6,9 @@
   <body>
     <outline text="Alkitabsaja" title="Alkitabiah">
       <outline type="rss" text="MatiKemana.com" htmlUrl="https://www.matikemana.com/" xmlUrl="https://www.matikemana.com/web1/feed" />
+      <outline type="rss" text="alkitabiah.org" htmlUrl="https://alkitabiah.org/tag/keselamatan/" xmlUrl="https://alkitabiah.org/tag/keselamatan/feed/" />
       <outline type="rss" text="Theopneustos" htmlUrl="https://kristenfundamentalis.wordpress.com/keselamatan/" xmlUrl="https://kristenfundamentalis.wordpress.com/keselamatan/feed" />
       <outline type="rss" text="Yesus Tuhan" htmlUrl="https://yesustuhan.wordpress.com/tag/keselamatan/" xmlUrl="https://yesustuhan.wordpress.com/tag/keselamatan/feed/" />
-      <outline type="rss" text="alkitabiah.org" htmlUrl="https://alkitabiah.org/tag/keselamatan/" xmlUrl="https://alkitabiah.org/tag/keselamatan/feed/" />
     </outline>
   </body>
 </opml>
