@@ -616,16 +616,20 @@ function renderJsEmbed(requestUrl, title) {
   if (!container) return;
 
   var iframe = document.createElement('iframe');
-  iframe.src     = ${JSON.stringify(iframeUrl.toString())};
-  iframe.loading = 'lazy';
-  iframe.title   = 'RSS Reader';
-  iframe.style.cssText = 'width:100%; border:none; min-height:600px;';
+  iframe.src             = ${JSON.stringify(iframeUrl.toString())};
+  iframe.loading         = 'lazy';
+  iframe.title           = 'RSS Reader';
+  iframe.scrolling       = 'no';
+  iframe.style.cssText   = 'width:100%; border:none; display:block; overflow:hidden;';
 
-  // Resize to content height when same-origin
-  iframe.onload = function () {
-    try { iframe.style.height = iframe.contentDocument.body.scrollHeight + 'px'; }
-    catch (e) { /* cross-origin — fixed height is fine */ }
-  };
+  // Receive height reports from the iframe and resize to fit.
+  // postMessage works cross-origin; the iframe sends rssReaderHeight on load
+  // and whenever its content changes (e.g. fonts, images, ResizeObserver).
+  window.addEventListener('message', function (e) {
+    if (e.source === iframe.contentWindow && e.data && e.data.rssReaderHeight) {
+      iframe.style.height = e.data.rssReaderHeight + 'px';
+    }
+  });
 
   container.appendChild(iframe);
 })();
@@ -701,11 +705,30 @@ function renderIframePage(posts, title, compact = false) {
   <style>
     ${THEME}
     ${POST_CARD_STYLES}
-    body { padding: 1rem; min-height: 100vh; }
+    body { padding: 1rem; }
+
+    /* Compact rows wrap to two lines on narrow widths */
+    @media (max-width: 480px) {
+      .post.compact { flex-wrap: wrap; }
+      .post.compact .post-feed { width: 100%; margin-bottom: .1rem; }
+    }
   </style>
 </head>
 <body>
   ${postCardsHtml}
+  <script>
+    // Tell the parent frame our real scroll height so it can resize us.
+    // Works cross-origin because we're sending, not reading.
+    function reportHeight() {
+      var h = document.documentElement.scrollHeight;
+      window.parent.postMessage({ rssReaderHeight: h }, '*');
+    }
+    reportHeight();
+    // Re-report if images or fonts shift layout after load
+    if (typeof ResizeObserver !== 'undefined') {
+      new ResizeObserver(reportHeight).observe(document.body);
+    }
+  <\/script>
 </body>
 </html>`, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
 }
