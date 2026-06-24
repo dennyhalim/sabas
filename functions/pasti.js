@@ -30,7 +30,7 @@ const CONFIG = {
   ],
 
   rss: {
-    url:      'https://matikemana.com/web1/feed',  // '' to disable
+    url:      'https://sabas.pages.dev/?format=rss',  // '' to disable
     max:      30,
     label:    'Latest posts',
     cacheTtl: 18000,  // seconds
