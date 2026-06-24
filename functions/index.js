@@ -565,6 +565,11 @@ function renderHtmlPage(posts, feeds, requestUrl, title) {
     </main>
   </div>
   <img src="https://counter11.optistats.ovh/private/freecounterstat.php?c=tu39n5z56tu56f9judearse1aum3c4qa" border="0">
+  <script>
+    window.goatcounter = {
+        path: function(p) { return location.host + p }
+    }
+</script>
     <script data-goatcounter="https://diselamatkan.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
 </body>
