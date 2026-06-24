@@ -361,7 +361,7 @@ const POST_CARD_STYLES = `
     color:       var(--muted);
     margin-bottom: .45rem;
   }
-  .post-excerpt { font-size: .85rem; color: var(--muted); line-height: 1.55; }
+  .post-excerpt { font-size: .85rem; color: #9ba3c2; line-height: 1.55; }
   .post-excerpt::after { content: ' …'; }
 `;
 
