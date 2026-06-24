@@ -614,6 +614,15 @@ export async function onRequest({ request, env, params }) {
       }
     }
 
+    // ── Fallback: local feeds.opml served as a Pages static asset ────────────
+    if (!opmlText && env.ASSETS) {
+      try {
+        const assetUrl  = new URL('/feeds.opml', url.origin);
+        const assetResp = await env.ASSETS.fetch(new Request(assetUrl.toString()));
+        if (assetResp.ok) opmlText = await assetResp.text();
+      } catch { /* no local file – fall through to usage page */ }
+    }
+
     if (!opmlText) {
       return renderUsage(url.host);
     }
