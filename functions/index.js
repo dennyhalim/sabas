@@ -824,6 +824,8 @@ Content-Type: text/xml
 &lt;?xml version="1.0"?&gt;
 &lt;opml version="2.0"&gt; … &lt;/opml&gt;</pre>
   </div>
+  <script data-goatcounter="https://diselamatkan.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
 </body>
 </html>`, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
 }
