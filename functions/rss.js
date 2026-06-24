@@ -109,6 +109,8 @@ function formatDate(dateString) {
  * Returns: Array<{ url, title, siteUrl }>
  */
 function parseOpml(opmlText) {
+  const title = cleanField(xmlText(opmlText, 'title')) || SITE_TITLE;
+
   const feeds = [];
   const outlinePattern = /<outline\b([^>]+)(?:\/>|>)/gi;
   let match;
@@ -125,7 +127,7 @@ function parseOpml(opmlText) {
     });
   }
 
-  return feeds;
+  return { title, feeds };
 }
 
 // ─── Feed parsing ─────────────────────────────────────────────────────────────
@@ -363,12 +365,35 @@ const POST_CARD_STYLES = `
   }
   .post-excerpt { font-size: .85rem; color: #9ba3c2; line-height: 1.55; }
   .post-excerpt::after { content: ' …'; }
+
+  /* ── Compact mode ── */
+  .post.compact {
+    padding:       .55rem 1rem;
+    margin-bottom: .3rem;
+    border-radius: 7px;
+    display:       flex;
+    align-items:   baseline;
+    gap:           .75rem;
+  }
+  .post.compact .post-feed {
+    flex-shrink:  0;
+    margin-bottom: 0;
+  }
+  .post.compact h2 { font-size: .9rem; margin-bottom: 0; }
 `;
 
 // ─── HTML renderer ────────────────────────────────────────────────────────────
 
 /** Render a single post card, shared between HTML and iframe output. */
-function renderPostCard(post) {
+function renderPostCard(post, compact = false) {
+  if (compact) {
+    return `
+    <article class="post compact">
+      <div class="post-feed">${htmlEscape(post.feedTitle)}</div>
+      <h2><a href="${htmlEscape(post.link)}" target="_blank" rel="noopener">${htmlEscape(post.title)}</a></h2>
+    </article>`;
+  }
+
   const excerpt = post.excerpt
     ? `<p class="post-excerpt">${htmlEscape(post.excerpt)}</p>`
     : '';
@@ -382,12 +407,20 @@ function renderPostCard(post) {
     </article>`;
 }
 
-function renderHtmlPage(posts, feeds, requestUrl) {
+function renderHtmlPage(posts, feeds, requestUrl, title) {
   const currentUrl = new URL(requestUrl);
+  const compact    = currentUrl.searchParams.get('compact') === '1';
 
   const formatUrl = (format) => {
     const url = new URL(requestUrl);
     url.searchParams.set('format', format);
+    return htmlEscape(url.toString());
+  };
+
+  const toggleCompactUrl = () => {
+    const url = new URL(requestUrl);
+    if (compact) url.searchParams.delete('compact');
+    else         url.searchParams.set('compact', '1');
     return htmlEscape(url.toString());
   };
 
@@ -396,7 +429,7 @@ function renderHtmlPage(posts, feeds, requestUrl) {
     .join('');
 
   const postCardsHtml = posts.length
-    ? posts.map(renderPostCard).join('')
+    ? posts.map(p => renderPostCard(p, compact)).join('')
     : `<p style="color:var(--muted); padding: 2rem 0">No posts found. Check that your OPML is accessible and your feeds are reachable.</p>`;
 
   const rssIcon   = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1" fill="currentColor"/></svg>`;
@@ -408,7 +441,7 @@ function renderHtmlPage(posts, feeds, requestUrl) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${htmlEscape(SITE_TITLE)}</title>
+  <title>${htmlEscape(title)}</title>
   <style>
     ${THEME}
     ${POST_CARD_STYLES}
@@ -474,6 +507,7 @@ function renderHtmlPage(posts, feeds, requestUrl) {
       transition:    border-color .2s, color .2s;
     }
     .export-link:hover { border-color: var(--accent); color: var(--accent); }
+    .export-link.active { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
 
     /* ── Main ── */
     .main { padding: 2rem 2.5rem; max-width: 820px; }
@@ -501,7 +535,7 @@ function renderHtmlPage(posts, feeds, requestUrl) {
           <path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/>
           <circle cx="5" cy="19" r="1" fill="currentColor"/>
         </svg>
-        ${htmlEscape(SITE_TITLE)}
+        ${htmlEscape(title)}
       </div>
 
       <div>
@@ -510,7 +544,12 @@ function renderHtmlPage(posts, feeds, requestUrl) {
       </div>
 
       <div class="export-section">
-        <div class="sidebar-label">Export as</div>
+        <div class="sidebar-label">View</div>
+        <a class="export-link${compact ? ' active' : ''}" href="${toggleCompactUrl()}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          ${compact ? 'Full view' : 'Compact view'}
+        </a>
+        <div class="sidebar-label" style="margin-top:.75rem">Export as</div>
         <a class="export-link" href="${formatUrl('rss')}">${rssIcon} RSS Feed</a>
         <a class="export-link" href="${formatUrl('js')}">${codeIcon} JS Embed</a>
         <a class="export-link" href="${formatUrl('iframe')}">${frameIcon} iFrame</a>
@@ -519,7 +558,7 @@ function renderHtmlPage(posts, feeds, requestUrl) {
 
     <main class="main">
       <header class="page-header">
-        <h1>${htmlEscape(SITE_TITLE)}</h1>
+        <h1>${htmlEscape(title)}</h1>
         <p>${posts.length} post${posts.length === 1 ? '' : 's'} from ${feeds.length} feed${feeds.length === 1 ? '' : 's'}</p>
       </header>
       ${postCardsHtml}
@@ -531,7 +570,7 @@ function renderHtmlPage(posts, feeds, requestUrl) {
 
 // ─── RSS renderer ─────────────────────────────────────────────────────────────
 
-function renderRssFeed(posts, requestUrl) {
+function renderRssFeed(posts, requestUrl, title) {
   const now      = new Date().toUTCString();
   const selfLink = htmlEscape(requestUrl);
 
@@ -548,7 +587,7 @@ function renderRssFeed(posts, requestUrl) {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>${htmlEscape(SITE_TITLE)} — Aggregated Feed</title>
+    <title>${htmlEscape(title)} — Aggregated Feed</title>
     <link>${selfLink}</link>
     <description>Aggregated RSS feed</description>
     <lastBuildDate>${now}</lastBuildDate>
@@ -564,7 +603,7 @@ function renderRssFeed(posts, requestUrl) {
 
 // ─── JS embed renderer ────────────────────────────────────────────────────────
 
-function renderJsEmbed(requestUrl) {
+function renderJsEmbed(requestUrl, title) {
   // Point the snippet at the iframe format of this same URL
   const iframeUrl = new URL(requestUrl);
   iframeUrl.searchParams.set('format', 'iframe');
@@ -577,16 +616,20 @@ function renderJsEmbed(requestUrl) {
   if (!container) return;
 
   var iframe = document.createElement('iframe');
-  iframe.src     = ${JSON.stringify(iframeUrl.toString())};
-  iframe.loading = 'lazy';
-  iframe.title   = 'RSS Reader';
-  iframe.style.cssText = 'width:100%; border:none; min-height:600px;';
+  iframe.src             = ${JSON.stringify(iframeUrl.toString())};
+  iframe.loading         = 'lazy';
+  iframe.title           = 'RSS Reader';
+  iframe.scrolling       = 'no';
+  iframe.style.cssText   = 'width:100%; border:none; display:block; overflow:hidden;';
 
-  // Resize to content height when same-origin
-  iframe.onload = function () {
-    try { iframe.style.height = iframe.contentDocument.body.scrollHeight + 'px'; }
-    catch (e) { /* cross-origin — fixed height is fine */ }
-  };
+  // Receive height reports from the iframe and resize to fit.
+  // postMessage works cross-origin; the iframe sends rssReaderHeight on load
+  // and whenever its content changes (e.g. fonts, images, ResizeObserver).
+  window.addEventListener('message', function (e) {
+    if (e.source === iframe.contentWindow && e.data && e.data.rssReaderHeight) {
+      iframe.style.height = e.data.rssReaderHeight + 'px';
+    }
+  });
 
   container.appendChild(iframe);
 })();
@@ -596,7 +639,7 @@ function renderJsEmbed(requestUrl) {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>JS Embed — ${htmlEscape(SITE_TITLE)}</title>
+  <title>JS Embed — ${htmlEscape(title)}</title>
   <style>
     ${THEME}
     body {
@@ -648,9 +691,9 @@ function renderJsEmbed(requestUrl) {
 
 // ─── iFrame renderer ──────────────────────────────────────────────────────────
 
-function renderIframePage(posts) {
+function renderIframePage(posts, title, compact = false) {
   const postCardsHtml = posts.length
-    ? posts.map(renderPostCard).join('')
+    ? posts.map(p => renderPostCard(p, compact)).join('')
     : '<p style="color:var(--muted); padding:1rem">No posts found.</p>';
 
   return new Response(`<!DOCTYPE html>
@@ -658,15 +701,34 @@ function renderIframePage(posts) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${htmlEscape(SITE_TITLE)}</title>
+  <title>${htmlEscape(title)}</title>
   <style>
     ${THEME}
     ${POST_CARD_STYLES}
-    body { padding: 1rem; min-height: 100vh; }
+    body { padding: 1rem; }
+
+    /* Compact rows wrap to two lines on narrow widths */
+    @media (max-width: 480px) {
+      .post.compact { flex-wrap: wrap; }
+      .post.compact .post-feed { width: 100%; margin-bottom: .1rem; }
+    }
   </style>
 </head>
 <body>
   ${postCardsHtml}
+  <script>
+    // Tell the parent frame our real scroll height so it can resize us.
+    // Works cross-origin because we're sending, not reading.
+    function reportHeight() {
+      var h = document.documentElement.scrollHeight;
+      window.parent.postMessage({ rssReaderHeight: h }, '*');
+    }
+    reportHeight();
+    // Re-report if images or fonts shift layout after load
+    if (typeof ResizeObserver !== 'undefined') {
+      new ResizeObserver(reportHeight).observe(document.body);
+    }
+  <\/script>
 </body>
 </html>`, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
 }
@@ -769,8 +831,9 @@ Content-Type: text/xml
 // ─── Request handler ──────────────────────────────────────────────────────────
 
 export async function onRequest({ request, env }) {
-  const url    = new URL(request.url);
-  const format = (url.searchParams.get('format') ?? 'html').toLowerCase();
+  const url     = new URL(request.url);
+  const format  = (url.searchParams.get('format') ?? 'html').toLowerCase();
+  const compact = url.searchParams.get('compact') === '1';
 
   // ── Step 1: Load OPML from whichever source is available ──────────────────
 
@@ -797,7 +860,7 @@ export async function onRequest({ request, env }) {
 
   // ── Step 2: Parse the OPML into a feed list ───────────────────────────────
 
-  const feeds = parseOpml(opmlText);
+  const { title, feeds } = parseOpml(opmlText);
 
   if (feeds.length === 0) {
     return new Response(
@@ -814,16 +877,16 @@ export async function onRequest({ request, env }) {
 
   switch (format) {
     case 'rss':
-      return renderRssFeed(posts, url.toString());
+      return renderRssFeed(posts, url.toString(), title);
 
     case 'js':
-      return renderJsEmbed(url.toString());
+      return renderJsEmbed(url.toString(), title);
 
     case 'iframe':
-      return renderIframePage(posts);
+      return renderIframePage(posts, title, compact);
 
     default:
-      return new Response(renderHtmlPage(posts, feeds, url.toString()), {
+      return new Response(renderHtmlPage(posts, feeds, url.toString(), title), {
         headers: { 'Content-Type': 'text/html; charset=utf-8' },
       });
   }
