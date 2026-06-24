@@ -365,12 +365,35 @@ const POST_CARD_STYLES = `
   }
   .post-excerpt { font-size: .85rem; color: #9ba3c2; line-height: 1.55; }
   .post-excerpt::after { content: ' …'; }
+
+  /* ── Compact mode ── */
+  .post.compact {
+    padding:       .55rem 1rem;
+    margin-bottom: .3rem;
+    border-radius: 7px;
+    display:       flex;
+    align-items:   baseline;
+    gap:           .75rem;
+  }
+  .post.compact .post-feed {
+    flex-shrink:  0;
+    margin-bottom: 0;
+  }
+  .post.compact h2 { font-size: .9rem; margin-bottom: 0; }
 `;
 
 // ─── HTML renderer ────────────────────────────────────────────────────────────
 
 /** Render a single post card, shared between HTML and iframe output. */
-function renderPostCard(post) {
+function renderPostCard(post, compact = false) {
+  if (compact) {
+    return `
+    <article class="post compact">
+      <div class="post-feed">${htmlEscape(post.feedTitle)}</div>
+      <h2><a href="${htmlEscape(post.link)}" target="_blank" rel="noopener">${htmlEscape(post.title)}</a></h2>
+    </article>`;
+  }
+
   const excerpt = post.excerpt
     ? `<p class="post-excerpt">${htmlEscape(post.excerpt)}</p>`
     : '';
@@ -386,10 +409,18 @@ function renderPostCard(post) {
 
 function renderHtmlPage(posts, feeds, requestUrl, title) {
   const currentUrl = new URL(requestUrl);
+  const compact    = currentUrl.searchParams.get('compact') === '1';
 
   const formatUrl = (format) => {
     const url = new URL(requestUrl);
     url.searchParams.set('format', format);
+    return htmlEscape(url.toString());
+  };
+
+  const toggleCompactUrl = () => {
+    const url = new URL(requestUrl);
+    if (compact) url.searchParams.delete('compact');
+    else         url.searchParams.set('compact', '1');
     return htmlEscape(url.toString());
   };
 
@@ -398,7 +429,7 @@ function renderHtmlPage(posts, feeds, requestUrl, title) {
     .join('');
 
   const postCardsHtml = posts.length
-    ? posts.map(renderPostCard).join('')
+    ? posts.map(p => renderPostCard(p, compact)).join('')
     : `<p style="color:var(--muted); padding: 2rem 0">No posts found. Check that your OPML is accessible and your feeds are reachable.</p>`;
 
   const rssIcon   = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1" fill="currentColor"/></svg>`;
@@ -476,6 +507,7 @@ function renderHtmlPage(posts, feeds, requestUrl, title) {
       transition:    border-color .2s, color .2s;
     }
     .export-link:hover { border-color: var(--accent); color: var(--accent); }
+    .export-link.active { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
 
     /* ── Main ── */
     .main { padding: 2rem 2.5rem; max-width: 820px; }
@@ -512,7 +544,12 @@ function renderHtmlPage(posts, feeds, requestUrl, title) {
       </div>
 
       <div class="export-section">
-        <div class="sidebar-label">Export as</div>
+        <div class="sidebar-label">View</div>
+        <a class="export-link${compact ? ' active' : ''}" href="${toggleCompactUrl()}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          ${compact ? 'Full view' : 'Compact view'}
+        </a>
+        <div class="sidebar-label" style="margin-top:.75rem">Export as</div>
         <a class="export-link" href="${formatUrl('rss')}">${rssIcon} RSS Feed</a>
         <a class="export-link" href="${formatUrl('js')}">${codeIcon} JS Embed</a>
         <a class="export-link" href="${formatUrl('iframe')}">${frameIcon} iFrame</a>
@@ -650,9 +687,9 @@ function renderJsEmbed(requestUrl, title) {
 
 // ─── iFrame renderer ──────────────────────────────────────────────────────────
 
-function renderIframePage(posts, title) {
+function renderIframePage(posts, title, compact = false) {
   const postCardsHtml = posts.length
-    ? posts.map(renderPostCard).join('')
+    ? posts.map(p => renderPostCard(p, compact)).join('')
     : '<p style="color:var(--muted); padding:1rem">No posts found.</p>';
 
   return new Response(`<!DOCTYPE html>
@@ -771,8 +808,9 @@ Content-Type: text/xml
 // ─── Request handler ──────────────────────────────────────────────────────────
 
 export async function onRequest({ request, env }) {
-  const url    = new URL(request.url);
-  const format = (url.searchParams.get('format') ?? 'html').toLowerCase();
+  const url     = new URL(request.url);
+  const format  = (url.searchParams.get('format') ?? 'html').toLowerCase();
+  const compact = url.searchParams.get('compact') === '1';
 
   // ── Step 1: Load OPML from whichever source is available ──────────────────
 
@@ -822,7 +860,7 @@ export async function onRequest({ request, env }) {
       return renderJsEmbed(url.toString(), title);
 
     case 'iframe':
-      return renderIframePage(posts, title);
+      return renderIframePage(posts, title, compact);
 
     default:
       return new Response(renderHtmlPage(posts, feeds, url.toString(), title), {
