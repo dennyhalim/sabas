@@ -1,15 +1,19 @@
 export async function onRequest(context) {
   const { request } = context;
+  const url = new URL(request.url);
   const host = request.headers.get('host').replace('www.', '');
-  
-  // Convert bio.john.com → bio_john_com
-  const safeName = host.replace(/\./g, '_');
-  const funcPath = `/${safeName}.js`;
-  
-  const res = await fetch(new URL(funcPath, new URL(request.url).origin), request);
+
+  // Build path: /bio.john.com.js
+  const funcPath = `/${host}.js`;
+  const targetUrl = new URL(funcPath, url.origin);
+
+  // Try fetch the file. If 404, go to default
+  const res = await fetch(targetUrl, request);
   
   if (res.status === 404) {
-    return fetch(new URL('/default.js', request.url), request);
+    const defaultUrl = new URL('/default.js', url.origin);
+    return fetch(defaultUrl, request);
   }
+  
   return res;
 }
