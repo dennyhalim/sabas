@@ -3,26 +3,23 @@ export async function onRequest(context) {
 
   const url = new URL(request.url);
 
-  // avoid recursion
-  if (url.pathname.startsWith('/bio_')) {
+  if (url.pathname.startsWith('/')) {
     return next();
   }
 
-  let host = request.headers.get('host') || '';
-  host = host.replace(/^www\./, '');
+  let host = (request.headers.get('host') || '')
+    .replace(/^www\./, '');
 
-  const safeName = host.replace(/\./g, '_');
+  const target = `/bio_${host.replace(/\./g, '_')}`;
 
-  const target = `/${safeName}`;
+  url.pathname = target;
 
-  // try matching function route
-  const rewrite = new URL(target, request.url);
+  let res = await context.next(new Request(url, request));
 
-  const response = await fetch(rewrite, request);
-
-  if (response.status !== 404) {
-    return response;
+  if (res.status === 404) {
+    url.pathname = '/default';
+    res = await context.next(new Request(url, request));
   }
 
-  return fetch(new URL('/default', request.url), request);
+  return res;
 }
