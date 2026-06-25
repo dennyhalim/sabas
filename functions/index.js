@@ -2,7 +2,7 @@ import * as doh_slamat_link from "./_doh_slamat_link.js";
 import * as default_js from "./_default.js";
 
 const apps = {
-  john_com,
+  doh_slamat_link,
 };
 
 export async function onRequest(context) {
