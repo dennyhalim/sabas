@@ -1,17 +1,18 @@
-const routes = {
-  doh_slamat_link: () => import("./_doh_slamat_link.js"),
+import * as doh_slamat_link from "./_doh_slamat_link.js";
+import * as default_js from "./_default.js";
+
+const apps = {
+  john_com,
 };
 
 export async function onRequest(context) {
-  const host = context.request.headers.get("host") || "";
+  let host = context.request.headers.get("host") || "";
 
   const safeName = host
     .replace(/^www\./, "")
     .replace(/\./g, "_");
 
-  const loader = routes[safeName] || (() => import("./_default.js"));
+  const app = apps[safeName] || default_js;
 
-  const mod = await loader();
-
-  return mod.onRequest(context);
+  return app.onRequest(context);
 }
