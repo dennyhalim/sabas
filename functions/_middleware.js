@@ -1,16 +1,15 @@
 export async function onRequest(context) {
   const { request } = context;
   const host = request.headers.get('host').replace('www.', '');
-
-  // Try to load /functions/bio.[host].js
-  const funcPath = `./${host}.js`;
-
-  try {
-    const mod = await import(funcPath);
-    return mod.onRequest(context);
-  } catch (e) {
-    // File not found = fall back to default
-    const defaultMod = await import('./default.js');
-    return defaultMod.onRequest(context);
+  
+  // Convert bio.john.com → bio_john_com
+  const safeName = host.replace(/\./g, '_');
+  const funcPath = `/${safeName}.js`;
+  
+  const res = await fetch(new URL(funcPath, new URL(request.url).origin), request);
+  
+  if (res.status === 404) {
+    return fetch(new URL('/default.js', request.url), request);
   }
+  return res;
 }
