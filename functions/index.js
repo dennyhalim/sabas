@@ -1,3 +1,8 @@
+const routes = {
+  doh_slamat_link: () => import("./_doh_slamat_link.js"),
+  alice_com: () => import("./bio_alice_com.js"),
+};
+
 export async function onRequest(context) {
   const host = context.request.headers.get("host") || "";
 
@@ -5,13 +10,9 @@ export async function onRequest(context) {
     .replace(/^www\./, "")
     .replace(/\./g, "_");
 
-  let handler;
+  const loader = routes[safeName] || (() => import("./_default.js"));
 
-  try {
-    handler = await import(`./_${safeName}.js`);
-  } catch (e) {
-    handler = await import("./_default.js");
-  }
+  const mod = await loader();
 
-  return handler.onRequest(context);
+  return mod.onRequest(context);
 }
