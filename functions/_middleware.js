@@ -1,15 +1,28 @@
 export async function onRequest(context) {
-  const { request } = context;
-  const host = request.headers.get('host').replace('www.', '');
-  
-  // Convert bio.john.com → bio_john_com
-  const safeName = host.replace(/\./g, '_');
-  const funcPath = `/${safeName}.js`;
-  
-  const res = await fetch(new URL(funcPath, new URL(request.url).origin), request);
-  
-  if (res.status === 404) {
-    return fetch(new URL('/default.js', request.url), request);
+  const { request, next } = context;
+
+  const url = new URL(request.url);
+
+  // avoid recursion
+  if (url.pathname.startsWith('/bio_')) {
+    return next();
   }
-  return res;
+
+  let host = request.headers.get('host') || '';
+  host = host.replace(/^www\./, '');
+
+  const safeName = host.replace(/\./g, '_');
+
+  const target = `/${safeName}`;
+
+  // try matching function route
+  const rewrite = new URL(target, request.url);
+
+  const response = await fetch(rewrite, request);
+
+  if (response.status !== 404) {
+    return response;
+  }
+
+  return fetch(new URL('/default', request.url), request);
 }
