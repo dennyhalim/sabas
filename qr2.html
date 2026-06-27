@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>QR Generator</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #121a33;
+      --panel2: #0f1730;
+      --text: #eef3ff;
+      --muted: #9fb0d0;
+      --border: #243055;
+      --accent: #6ea8fe;
+      --accent2: #4b7cff;
+      --good: #21c17a;
+      --shadow: 0 12px 40px rgba(0,0,0,.25);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--text);
+      background: linear-gradient(180deg, #08101f, #0b1020 40%, #10193a);
+    }
+    .wrap { max-width: 1240px; margin: 0 auto; padding: 24px; }
+    h1 { margin: 0 0 6px; font-size: 30px; }
+    p { margin: 0 0 18px; color: var(--muted); }
+    .layout { display: grid; grid-template-columns: 1.05fr .95fr; gap: 18px; }
+    .card {
+      background: rgba(18, 26, 51, .92);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+    .tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .tab {
+      width: auto;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      background: var(--panel2);
+      color: var(--text);
+      border-radius: 999px;
+      cursor: pointer;
+    }
+    .tab.active {
+      background: linear-gradient(180deg, var(--accent), var(--accent2));
+      border-color: transparent;
+      color: white;
+    }
+    .panel {
+      display: none;
+      padding-top: 4px;
+    }
+    .panel.active { display: block; }
+    label {
+      display: block;
+      font-size: 13px;
+      color: var(--muted);
+      margin: 12px 0 6px;
+    }
+    input, select, textarea, button {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid #31406b;
+      background: #0b1226;
+      color: var(--text);
+      padding: 12px 14px;
+      font: inherit;
+    }
+    textarea { min-height: 96px; resize: vertical; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 14px;
+    }
+    button {
+      cursor: pointer;
+      background: linear-gradient(180deg, #7aa7ff, #4b7cff);
+      border: none;
+      font-weight: 700;
+    }
+    button.secondary {
+      background: #18203b;
+      border: 1px solid var(--border);
+    }
+    .preview-box {
+      background: #fff;
+      border-radius: 18px;
+      padding: 18px;
+      min-height: 420px;
+      display: grid;
+      place-items: center;
+      overflow: auto;
+    }
+    .preview-meta {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .small-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .tag {
+      display: inline-flex;
+      width: fit-content;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(110,168,254,.12);
+      border: 1px solid rgba(110,168,254,.28);
+      color: #cfe0ff;
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 8px; }
+    .live {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      margin-top: 12px;
+    }
+    .live strong { color: #fff; }
+    @media (max-width: 980px) {
+      .layout, .row, .controls, .small-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>HTML QR Generator</h1>
+    <p>Tabs for each QR type, live preview, logo support, and SVG/PNG downloads.</p>
+
+    <div class="layout">
+      <div class="card">
+        <div class="tabs" id="tabs">
+          <button class="tab active" data-tab="url">URL</button>
+          <button class="tab" data-tab="text">Text</button>
+          <button class="tab" data-tab="email">Email</button>
+          <button class="tab" data-tab="sms">SMS</button>
+          <button class="tab" data-tab="tel">Phone</button>
+          <button class="tab" data-tab="wifi">Wi‑Fi</button>
+          <button class="tab" data-tab="vcard">vCard</button>
+        </div>
+
+        <div id="panels">
+          <div class="panel active" data-panel="url">
+            <span class="tag">Live preview</span>
+            <label>URL</label>
+            <input id="url_data" value="https://example.com" placeholder="https://example.com">
+          </div>
+
+          <div class="panel" data-panel="text">
+            <span class="tag">Live preview</span>
+            <label>Text</label>
+            <textarea id="text_data">Hello from QR</textarea>
+          </div>
+
+          <div class="panel" data-panel="email">
+            <span class="tag">Live preview</span>
+            <div class="row">
+              <div><label>To</label><input id="email_to" value="name@example.com"></div>
+              <div><label>Subject</label><input id="email_sub" value="Hello"></div>
+            </div>
+            <label>Body</label>
+            <textarea id="email_body">Message body</textarea>
+          </div>
+
+          <div class="panel" data-panel="sms">
+            <span class="tag">Live preview</span>
+            <div class="row">
+              <div><label>Number</label><input id="sms_num" value="+628123456789"></div>
+              <div><label>Message</label><input id="sms_msg" value="Hello"></div>
+            </div>
+          </div>
+
+          <div class="panel" data-panel="tel">
+            <span class="tag">Live preview</span>
+            <label>Phone</label>
+            <input id="tel_num" value="+628123456789">
+          </div>
+
+          <div class="panel" data-panel="wifi">
+            <span class="tag">Live preview</span>
+            <div class="row">
+              <div><label>SSID</label><input id="wifi_ssid" value="MyWifi"></div>
+              <div><label>Password</label><input id="wifi_pwd" value="password123"></div>
+            </div>
+            <div class="row">
+              <div>
+                <label>Encryption</label>
+                <select id="wifi_enc">
+                  <option>WPA</option>
+                  <option>WEP</option>
+                  <option>nopass</option>
+                </select>
+              </div>
+              <div>
+                <label>Hidden</label>
+                <select id="wifi_hidden">
+                  <option value="false">No</option>
+                  <option value="true">Yes</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel" data-panel="vcard">
+            <span class="tag">Live preview</span>
+            <div class="row">
+              <div><label>Full name</label><input id="vc_name" value="Jane Doe"></div>
+              <div><label>Phone</label><input id="vc_phone" value="+628123456789"></div>
+            </div>
+            <div class="row">
+              <div><label>Email</label><input id="vc_email" value="jane@example.com"></div>
+              <div><label>Organization</label><input id="vc_org" value="Acme"></div>
+            </div>
+            <label>Website</label>
+            <input id="vc_url" value="https://example.com">
+            <label>Address</label>
+            <textarea id="vc_addr">Jakarta</textarea>
+          </div>
+        </div>
+
+        <div class="small-grid">
+          <div>
+            <label for="size">Size</label>
+            <input id="size" type="number" min="160" max="1200" value="340">
+          </div>
+          <div>
+            <label for="margin">Margin</label>
+            <input id="margin" type="number" min="0" max="30" value="12">
+          </div>
+        </div>
+
+        <div class="small-grid">
+          <div>
+            <label for="dark">Foreground</label>
+            <input id="dark" type="color" value="#111111">
+          </div>
+          <div>
+            <label for="light">Background</label>
+            <input id="light" type="color" value="#ffffff">
+          </div>
+        </div>
+
+        <label for="logo">Logo image</label>
+        <input id="logo" type="file" accept="image/*">
+
+        <div class="small-grid">
+          <div>
+            <label for="logoSize">Logo size</label>
+            <input id="logoSize" type="number" min="0" max="100" value="22">
+          </div>
+          <div>
+            <label for="logoMargin">Logo margin</label>
+            <input id="logoMargin" type="number" min="0" max="30" value="6">
+          </div>
+        </div>
+
+        <div class="controls">
+          <button id="gen">Generate</button>
+          <button id="png" class="secondary">Download PNG</button>
+          <button id="svg" class="secondary">Download SVG</button>
+          <button id="copy" class="secondary">Copy Data</button>
+        </div>
+
+        <div class="live">
+          <div><strong>Live payload</strong></div>
+          <div id="payloadPreview">https://example.com</div>
+        </div>
+
+        <div class="hint">Tip: keep the logo small for best scan reliability.</div>
+      </div>
+
+      <div class="card">
+        <div class="preview-box" id="qr"></div>
+        <div class="preview-meta">
+          <div id="status">Ready.</div>
+          <div id="typeLabel">Current tab: URL</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/qr-code-styling@1.6.0/lib/qr-code-styling.js"></script>
+  <script>
+    const qrEl = document.getElementById('qr');
+    const status = document.getElementById('status');
+    const payloadPreview = document.getElementById('payloadPreview');
+    const typeLabel = document.getElementById('typeLabel');
+
+    const tabs = [...document.querySelectorAll('.tab')];
+    const panels = [...document.querySelectorAll('.panel')];
+
+    const size = document.getElementById('size');
+    const margin = document.getElementById('margin');
+    const dark = document.getElementById('dark');
+    const light = document.getElementById('light');
+    const logoInput = document.getElementById('logo');
+    const logoSize = document.getElementById('logoSize');
+    const logoMargin = document.getElementById('logoMargin');
+
+    let activeTab = 'url';
+    let logoDataUrl = '';
+    let qrCode = null;
+    let lastData = '';
+
+    function esc(s) {
+      return String(s || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/
+/g, '\
+');
+    }
+
+    function getData() {
+      if (activeTab === 'url') return document.getElementById('url_data').value.trim();
+      if (activeTab === 'text') return document.getElementById('text_data').value.trim();
+      if (activeTab === 'email') {
+        const to = document.getElementById('email_to').value.trim();
+        const sub = document.getElementById('email_sub').value;
+        const body = document.getElementById('email_body').value;
+        return `mailto:${to}?subject=${encodeURIComponent(sub)}&body=${encodeURIComponent(body)}`;
+      }
+      if (activeTab === 'sms') {
+        return `SMSTO:${document.getElementById('sms_num').value.trim()}:${document.getElementById('sms_msg').value}`;
+      }
+      if (activeTab === 'tel') {
+        return `tel:${document.getElementById('tel_num').value.trim()}`;
+      }
+      if (activeTab === 'wifi') {
+        return `WIFI:T:${document.getElementById('wifi_enc').value};S:${esc(document.getElementById('wifi_ssid').value)};P:${esc(document.getElementById('wifi_pwd').value)};H:${document.getElementById('wifi_hidden').value};;`;
+      }
+      if (activeTab === 'vcard') {
+        return `BEGIN:VCARD
+VERSION:3.0
+FN:${esc(document.getElementById('vc_name').value)}
+ORG:${esc(document.getElementById('vc_org').value)}
+TEL:${esc(document.getElementById('vc_phone').value)}
+EMAIL:${esc(document.getElementById('vc_email').value)}
+URL:${esc(document.getElementById('vc_url').value)}
+ADR:;;${esc(document.getElementById('vc_addr').value)};;;;
+END:VCARD`;
+      }
+      return '';
+    }
+
+    function renderQr() {
+      const data = getData();
+      lastData = data;
+      payloadPreview.textContent = data;
+      typeLabel.textContent = 'Current tab: ' + activeTab.toUpperCase();
+
+      qrEl.innerHTML = '';
+      qrCode = new QRCodeStyling({
+        width: Number(size.value),
+        height: Number(size.value),
+        data,
+        margin: Number(margin.value),
+        qrOptions: { errorCorrectionLevel: 'H' },
+        dotsOptions: { color: dark.value, type: 'rounded' },
+        cornersSquareOptions: { color: dark.value, type: 'extra-rounded' },
+        cornersDotOptions: { color: dark.value, type: 'dot' },
+        backgroundOptions: { color: light.value },
+        image: logoDataUrl || undefined,
+        imageOptions: {
+          crossOrigin: 'anonymous',
+          margin: Number(logoMargin.value),
+          imageSize: Number(logoSize.value) / 100
+        }
+      });
+      qrCode.append(qrEl);
+      status.textContent = 'Preview updated.';
+    }
+
+    function setActiveTab(tab) {
+      activeTab = tab;
+      tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+      panels.forEach(p => p.classList.toggle('active', p.dataset.panel === tab));
+      renderQr();
+    }
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => setActiveTab(tab.dataset.tab));
+    });
+
+    document.addEventListener('input', (e) => {
+      if (
+        e.target.matches('input, textarea, select') &&
+        !['logo'].includes(e.target.id)
+      ) {
+        renderQr();
+      }
+    });
+
+    document.getElementById('gen').onclick = renderQr;
+
+    document.getElementById('copy').onclick = async () => {
+      await navigator.clipboard.writeText(lastData);
+      status.textContent = 'Payload copied to clipboard.';
+    };
+
+    document.getElementById('png').onclick = async () => {
+      if (!qrCode) return;
+      const blob = await qrCode.getRawData('png');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'qr.png';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    };
+
+    document.getElementById('svg').onclick = async () => {
+      if (!qrCode) return;
+      const blob = await qrCode.getRawData('svg');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'qr.svg';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    };
+
+    logoInput.onchange = async () => {
+      const file = logoInput.files && logoInput.files[0];
+      if (!file) {
+        logoDataUrl = '';
+        renderQr();
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        logoDataUrl = reader.result;
+        renderQr();
+      };
+      reader.readAsDataURL(file);
+    };
+
+    [size, margin, dark, light, logoSize, logoMargin].forEach(el => el.addEventListener('change', renderQr));
+
+    renderQr();
+  </script>
+</body>
+</html>
