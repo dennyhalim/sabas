@@ -218,9 +218,7 @@
       let qrCode = null;
       let lastData = '';
 
-      function esc(s){ return String(s||'').replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/
-/g,'\
-'); }
+      function esc(s){ return String(s||'').replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\n'); }
 
       function getData() {
         if (activeTab === 'url') return document.getElementById('url_data').value.trim();
