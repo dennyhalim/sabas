@@ -9,7 +9,7 @@
       --bg:#0b1020; --panel:#121a33; --panel2:#0f1730; --text:#eef3ff;
       --muted:#9fb0d0; --border:#243055; --accent:#6ea8fe; --accent2:#4b7cff;
     }
-    * { box-sizing:border-box; }
+    * { box-sizing: border-box; }
     body {
       margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
       color:var(--text); background:linear-gradient(180deg,#08101f,#0b1020 40%,#10193a);
@@ -56,13 +56,19 @@
       color:#cfe0ff; font-size:12px; margin-bottom:6px;
     }
     .hint { font-size:12px; color:var(--muted); margin-top:8px; }
+    .logo-wrap { position:relative; display:inline-block; }
+    .logo-wrap img {
+      position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+      background:white; border-radius:12px; padding:4px; box-shadow:0 4px 18px rgba(0,0,0,.18);
+      pointer-events:none;
+    }
     @media (max-width:980px){ .layout,.row,.controls,.small-grid { grid-template-columns:1fr; } }
   </style>
 </head>
 <body>
   <div class="wrap">
     <h1>HTML QR Generator</h1>
-    <p>Tabs for each QR type, live preview, logo upload, and SVG/PNG downloads.</p>
+    <p>Tabs for each QR type, live preview, logo overlay, and SVG/PNG downloads.</p>
 
     <div class="layout">
       <div class="card">
@@ -167,8 +173,8 @@
         <input id="logo" type="file" accept="image/*">
 
         <div class="small-grid">
-          <div><label for="logoSize">Logo size</label><input id="logoSize" type="number" min="0" max="100" value="22"></div>
-          <div><label for="logoMargin">Logo margin</label><input id="logoMargin" type="number" min="0" max="30" value="6"></div>
+          <div><label for="logoSize">Logo size %</label><input id="logoSize" type="number" min="10" max="40" value="22"></div>
+          <div><label for="logoPad">Logo padding</label><input id="logoPad" type="number" min="0" max="20" value="4"></div>
         </div>
 
         <div class="controls">
@@ -183,7 +189,7 @@
           <div id="payloadPreview">https://example.com</div>
         </div>
 
-        <div class="hint">Keep the logo modest in size for better scan reliability.</div>
+        <div class="hint">If QR does not render, the library script likely failed to load. This version uses the documented qrjs2 SVG API directly.</div>
       </div>
 
       <div class="card">
@@ -211,7 +217,7 @@
       const light = document.getElementById('light');
       const logoInput = document.getElementById('logo');
       const logoSize = document.getElementById('logoSize');
-      const logoMargin = document.getElementById('logoMargin');
+      const logoPad = document.getElementById('logoPad');
 
       let activeTab = 'url';
       let logoDataUrl = '';
@@ -240,17 +246,32 @@ END:VCARD`;
         return '';
       }
 
+      function svgToDataUrl(svgEl) {
+        const clone = svgEl.cloneNode(true);
+        clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        const xml = new XMLSerializer().serializeToString(clone);
+        return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(xml)));
+      }
+
       function renderQr() {
+        if (!window.QRCode || !QRCode.generateSVG) {
+          status.textContent = 'QR library failed to load.';
+          return;
+        }
+
         const data = getData();
+        if (!data) {
+          status.textContent = 'No data to generate.';
+          return;
+        }
+
         lastData = data;
         payloadPreview.textContent = data;
         typeLabel.textContent = 'Current tab: ' + activeTab.toUpperCase();
         qrEl.innerHTML = '';
 
-        const target = document.createElement('div');
-        target.style.background = light.value;
-        target.style.padding = '16px';
-        target.style.borderRadius = '12px';
+        const wrap = document.createElement('div');
+        wrap.className = 'logo-wrap';
 
         const svg = QRCode.generateSVG(data, {
           ecl: 'H',
@@ -260,35 +281,22 @@ END:VCARD`;
           textcolor: dark.value
         });
 
+        svg.style.width = size.value + 'px';
+        svg.style.height = size.value + 'px';
         svg.setAttribute('width', size.value);
         svg.setAttribute('height', size.value);
-        svg.setAttribute('viewBox', svg.getAttribute('viewBox') || `0 0 ${size.value} ${size.value}`);
-        target.appendChild(svg);
+
+        wrap.appendChild(svg);
 
         if (logoDataUrl) {
           const logo = document.createElement('img');
           logo.src = logoDataUrl;
-          logo.style.position = 'absolute';
-          logo.style.left = '50%';
-          logo.style.top = '50%';
-          logo.style.transform = 'translate(-50%, -50%)';
           logo.style.width = logoSize.value + '%';
-          logo.style.maxWidth = '96px';
-          logo.style.height = 'auto';
-          logo.style.background = 'white';
-          logo.style.borderRadius = '12px';
-          logo.style.padding = '4px';
-          logo.style.boxShadow = '0 4px 18px rgba(0,0,0,.18)';
-          const holder = document.createElement('div');
-          holder.style.position = 'relative';
-          holder.style.display = 'inline-block';
-          holder.appendChild(target);
-          holder.appendChild(logo);
-          qrEl.appendChild(holder);
-        } else {
-          qrEl.appendChild(target);
+          logo.style.padding = logoPad.value + 'px';
+          wrap.appendChild(logo);
         }
 
+        qrEl.appendChild(wrap);
         status.textContent = 'Preview updated.';
       }
 
@@ -312,38 +320,36 @@ END:VCARD`;
         status.textContent = 'Payload copied to clipboard.';
       });
 
-      document.getElementById('png').addEventListener('click', async () => {
+      document.getElementById('svg').addEventListener('click', () => {
         const svg = qrEl.querySelector('svg');
         if (!svg) return;
-        const clone = svg.cloneNode(true);
-        const xml = new XMLSerializer().serializeToString(clone);
-        const canvas = document.createElement('canvas');
+        const dataUrl = svgToDataUrl(svg);
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = 'qr.svg';
+        a.click();
+      });
+
+      document.getElementById('png').addEventListener('click', () => {
+        const svg = qrEl.querySelector('svg');
+        if (!svg) return;
+        const xml = new XMLSerializer().serializeToString(svg);
         const img = new Image();
+        const canvas = document.createElement('canvas');
         const w = Number(size.value);
-        canvas.width = w; canvas.height = w;
+        canvas.width = w;
+        canvas.height = w;
         img.onload = () => {
           const ctx = canvas.getContext('2d');
           ctx.fillStyle = light.value;
           ctx.fillRect(0, 0, w, w);
           ctx.drawImage(img, 0, 0, w, w);
           const a = document.createElement('a');
-          a.download = 'qr.png';
           a.href = canvas.toDataURL('image/png');
+          a.download = 'qr.png';
           a.click();
         };
         img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(xml);
-      });
-
-      document.getElementById('svg').addEventListener('click', async () => {
-        const svg = qrEl.querySelector('svg');
-        if (!svg) return;
-        const xml = new XMLSerializer().serializeToString(svg);
-        const blob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'qr.svg';
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
       });
 
       logoInput.addEventListener('change', () => {
@@ -358,7 +364,7 @@ END:VCARD`;
         reader.readAsDataURL(file);
       });
 
-      [size, margin, dark, light, logoSize, logoMargin].forEach(el => el.addEventListener('change', renderQr));
+      [size, margin, dark, light, logoSize, logoPad].forEach(el => el.addEventListener('change', renderQr));
 
       setActiveTab('url');
     });
