@@ -22,7 +22,8 @@ const CONFIG = {
   avatar:   '',   // full https:// URL or '' for initials
 
   links: [
-    { label: 'Website',    url: 'https://matikemana.com',           icon: '🌐' },
+    { label: 'Website',    url: 'https://matikemana.com/?utm_source=cf',           icon: '🌐' },
+    { label: 'ebooks',    url: 'https://alkitabsaja.github.io/docs/?utm_source=cf',           icon: '🌐' },
     { label: 'Facebook',     url: 'https://facebook.com/alkitabsaja',   icon: '🐙' },
     { label: 'Instagram',   url: 'https://instagram.com/alkitabsaja',  icon: '🐘' },
     { label: 'Telegram', url: 'https://t.me/addlist/Qt557gGoAsIwZDI1',icon: '📬' },
