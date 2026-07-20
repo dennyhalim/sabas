@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+  <head>
+    <title>News i read</title>
+  </head>
+  <body>
+    <outline title="health" text="health">
+      <outline text="cstnews.com" type="rss" xmlUrl="http://www.cstnews.com/bm/science-and-health-issues-common-sense-for-today/bm~feed.xml" htmlUrl="http://www.cstnews.com/bm/science-and-health-issues-common-sense-for-today/index.shtml" />
+      <outline text="Deep Roots at Home" title="Deep Roots at Home" type="rss" 
+            xmlUrl="https://deeprootsathome.com/feed/" htmlUrl="https://deeprootsathome.com/"/>
+      <outline text="Aaron Siri" type="rss" xmlUrl="https://aaronsiri.substack.com/feed" htmlUrl="https://aaronsiri.substack.com" />
+      <outline text="Kirsch" type="rss" xmlUrl="https://kirschsubstack.com/feed" htmlUrl="https://kirschsubstack.com" />
+      <outline text="America Out Loud News" title="America Out Loud News" type="rss" 
+            xmlUrl="https://www.americaoutloud.news/category/subject-matter/healthcare/feed/" htmlUrl="https://www.americaoutloud.news/category/subject-matter/healthcare/"/>
+      <outline text="Children Health Defense" type="rss" xmlUrl="https://childrenshealthdefense.org/feed/" htmlUrl="https://childrenshealthdefense.org/defender/" />
+      <outline text="Health | The Epoch Times" title="Health | The Epoch Times" type="rss" 
+            xmlUrl="https://www.theepochtimes.com/health/feed" htmlUrl="https://www.theepochtimes.com/health/feed"/>
+    </outline>
+    <outline title="security" text="security">
+      <outline text="darkreading" title="darkreading" type="rss" 
+            xmlUrl="https://www.darkreading.com/rss.xml" htmlUrl="https://www.darkreading.com"/>
+      <outline text="ASEAN | CSO Online" title="csoonline" type="rss" 
+            xmlUrl="https://www.csoonline.com/asean/feed/" htmlUrl="https://www.csoonline.com"/>
+      <outline text="msspalert" title="msspalert" type="rss" 
+            xmlUrl="https://www.msspalert.com/feed/topic/latest" htmlUrl="https://www.msspalert.com/"/>
+      <outline text="eSecurity Planet" title="eSecurity Planet" type="rss" 
+            xmlUrl="https://www.esecurityplanet.com/feed/" htmlUrl="https://www.esecurityplanet.com/"/>
+      <outline text="The Hacker News" title="The Hacker News" type="rss" 
+            xmlUrl="https://thehackernews.com/feeds/posts/default" htmlUrl="https://thehackernews.com"/>
+      <outline text="SecurityWeek" title="SecurityWeek" type="rss" 
+            xmlUrl="https://www.securityweek.com/feed/" htmlUrl="https://www.securityweek.com/"/>
+      <outline text="Malwarebytes" title="Malwarebytes" type="rss" 
+            xmlUrl="https://www.malwarebytes.com/blog/feed/index.xml" htmlUrl="https://www.malwarebytes.com/blog/"/>
+      <outline text="RestorePrivacy" title="RestorePrivacy" type="rss" 
+            xmlUrl="https://restoreprivacy.com/feed/" htmlUrl="https://restoreprivacy.com/"/>
+      <outline text="Krebs on Security" title="Krebs on Security" type="rss" 
+            xmlUrl="https://krebsonsecurity.com/feed/" htmlUrl="https://krebsonsecurity.com"/>
+    </outline>
+    <outline text="denny.wordpress.com" title="Biblical">
+      <outline type="rss" text="Fan of Truth" htmlUrl="https://truelyfanatic.wordpress.com/" xmlUrl="https://truelyfanatic.wordpress.com/feed/" />
+      <outline type="rss" text="wayoflife.org" htmlUrl="https://wayoflife.org/" xmlUrl="https://www.wayoflife.org/index_files/Way%20of%20Life%20Rss.xml" />
+      <outline type="rss" text="lighthouse trails research" htmlUrl="https://www.lighthousetrailsresearch.com/blog" xmlUrl="https://www.lighthousetrailsresearch.com/blog/?feed=rss2" />
+      <outline type="rss" text="The Submerging Church | Discernment About the Emergent Church" htmlUrl="http://www.submergingchurch.com" xmlUrl="http://www.submergingchurch.com/feed/" />
+      <outline type="rss" text="Essays on Calvinism" htmlUrl="https://essaysoncalvinism.wordpress.com" xmlUrl="https://essaysoncalvinism.wordpress.com/feed/" />
+      <outline type="rss" text="Do Right Christians" htmlUrl="https://dorightchristians.wordpress.com" xmlUrl="https://dorightchristians.wordpress.com/feed/" />
+      <outline type="rss" text="Worthy Christian News » Christian Persecution" htmlUrl="http://www.worthynews.com" xmlUrl="http://www.worthynews.com/news/christian-persecution/feed" />
+    </outline>
+    <outline text="Alkitabsaja" title="Alkitabiah.org">
+      <outline type="rss" text="Theopneustos" htmlUrl="https://kristenfundamentalis.wordpress.com/" xmlUrl="https://kristenfundamentalis.wordpress.com/feed" />
+      <outline type="rss" text="Yesus Tuhan" htmlUrl="https://yesustuhan.wordpress.com" xmlUrl="https://yesustuhan.wordpress.com/feed/" />
+      <outline type="rss" text="alkitabiah.org" htmlUrl="https://alkitabiah.org" xmlUrl="https://alkitabiah.org/feed" />
+      <outline type="rss" text="carilah dahulu Kerajaan Allah dan kebenarannya Mat 6:33" htmlUrl="https://surgabenar.blogspot.com/" xmlUrl="https://surgabenar.blogspot.com/feeds/posts/default" />
+      <outline type="rss" text="Mati Kemana" htmlUrl="https://matikemana.com" xmlUrl="https://www.matikemana.com/web1/feed/" />
+      <outline type="rss" text="books" htmlUrl="https://www.wattpad.com/user/limdny33" xmlUrl="https://www.wattpad.com/rss?username=limdny33" />
+      <outline type="rss" text="Ajaran Alkitabiah" htmlUrl="https://alkitabiah.wordpress.com" xmlUrl="https://alkitabiah.wordpress.com/feed/" />
+      <outline type="rss" text="DANCE SUAT BIBLE CLASS" htmlUrl="https://dancesuatbibleclass.wordpress.com" xmlUrl="https://dancesuatbibleclass.wordpress.com/feed/" />
+      <outline type="rss" text="gbiapontianak" htmlUrl="https://gbiapontianak.blogspot.com/" xmlUrl="https://gbiapontianak.blogspot.com/feeds/posts/default" />
+      <outline type="rss" text="KONTRADIKSI ALKITAB" htmlUrl="https://jawab-kontradiksi-alkitab.blogspot.com/" xmlUrl="https://jawab-kontradiksi-alkitab.blogspot.com/feeds/posts/default" />
+      <outline type="rss" text="Kupas Tuntas Gerakan EKUMENE" htmlUrl="https://ekumenikal.wordpress.com" xmlUrl="https://ekumenikal.wordpress.com/feed/" />
+      <outline type="rss" text="graphe-ministry" htmlUrl="https://graphe-ministry.org/articles" xmlUrl="https://graphe-ministry.org/articles/feed/" />
+    </outline>
+    <outline text="Slamat.link" title="Diselamatkan.org">
+      <outline type="rss" text="MatiKemana.com" htmlUrl="https://www.matikemana.com/" xmlUrl="https://www.matikemana.com/web1/feed" />
+      <outline type="rss" text="alkitabiah.org" htmlUrl="https://alkitabiah.org/tag/keselamatan/" xmlUrl="https://alkitabiah.org/tag/keselamatan/feed/" />
+      <outline type="rss" text="Theopneustos" htmlUrl="https://kristenfundamentalis.wordpress.com/keselamatan/" xmlUrl="https://kristenfundamentalis.wordpress.com/keselamatan/feed" />
+      <outline type="rss" text="Yesus Tuhan" htmlUrl="https://yesustuhan.wordpress.com/tag/keselamatan/" xmlUrl="https://yesustuhan.wordpress.com/tag/keselamatan/feed/" />
+    </outline>
+</body>
+</opml>
