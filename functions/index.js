@@ -14,7 +14,7 @@
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const SITE_TITLE      = 'RSS Reader';
+const SITE_TITLE      = 'bagaimana diselamatkan.org';
 const MAX_PER_FEED    = 15;    // items to keep per feed before merging
 const FETCH_TIMEOUT   = 8000;  // ms — abort slow feeds rather than stall
 const EXCERPT_LENGTH  = 280;   // characters of plain-text excerpt to keep
