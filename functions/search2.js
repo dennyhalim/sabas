@@ -4,11 +4,12 @@ export async function onRequestGet(context) {
 
   const q = url.searchParams.get('q') || '';
   const scope = url.searchParams.get('scope') || 'unrestricted';
-  const engine = (url.searchParams.get('engine') || 'auto').toLowerCase(); // new
+  const engine = (url.searchParams.get('engine') || 'auto').toLowerCase();
   const SERPER_KEY = env.SERPER_KEY || null;
   const BRAVE_KEY = env.BRAVE_API_KEY || null;
 
-  if (!q) return htmlPage("", "Enter a search query", engine);
+  // FIX: If no query, just show the form. Don't run any search.
+  if (!q) return htmlPage("", "", engine, scope);
 
   // Build query based on scope
   let finalQuery = q;
@@ -18,6 +19,40 @@ export async function onRequestGet(context) {
     const domain = parts.length > 1? parts.slice(-2).join('.') : url.hostname;
     finalQuery = `site:${domain} ${q}`;
   }
+
+  let results = [];
+  let provider = "None";
+  let errors = [];
+
+  const engines = {
+    serper: () => searchSerper(finalQuery, SERPER_KEY),
+    brave: () => searchBrave(finalQuery, BRAVE_KEY),
+    jina: () => searchJina(finalQuery),
+    ddg: () => searchDDG(finalQuery),
+  };
+
+  // If specific engine requested
+  if (engine!== 'auto' && engines[engine]) {
+    try {
+      results = await engines[engine]();
+      provider = engine.toUpperCase();
+    } catch(e){ errors.push(`${engine}: ` + e.message) }
+  }
+  // Auto fallback chain
+  else {
+    const chain = ['serper', 'brave', 'jina', 'ddg'];
+    for(const e of chain){
+      if(e === 'serper' &&!SERPER_KEY) continue;
+      if(e === 'brave' &&!BRAVE_KEY) continue;
+      try {
+        results = await engines[e]();
+        if(results.length > 0) { provider = e.toUpperCase(); break; }
+      } catch(err){ errors.push(`${e}: ` + err.message) }
+    }
+  }
+
+  return htmlPage(q, results, provider, scope, engine, errors.join(' | '));
+}
 
   let results = [];
   let provider = "None";
@@ -82,33 +117,55 @@ async function searchBrave(q, key) {
 }
 
 async function searchJina(q) {
-  const bingUrl = `https://www.bing.com/search?q=${encodeURIComponent(q)}`;
-  const res = await fetch(`https://r.jina.ai/${bingUrl}`);
+  // Jina now wraps everything. Use the reader API
+  const bingUrl = `https://www.bing.com/search?q=${encodeURIComponent(q)}&count=20`;
+  const res = await fetch(`https://r.jina.ai/http://${bingUrl.replace('https://','')}`);
   if(!res.ok) throw new Error(res.status);
-  const md = await res.text();
+  const text = await res.text();
+
+  if(!text || text.length < 100) throw new Error("Jina returned empty");
+
   const results = [];
-  const regex = /\[(.*?)\]\((.*?)\)\s*\n(.*?)(?=\n\[|$)/gs;
-  let match;
-  while ((match = regex.exec(md))!== null && results.length < 20) {
+  // New Jina format: [1] Title\nURL\nSnippet
+  const blocks = text.split(/\n\[\d+\]/).slice(1); // skip header
+
+  for(const block of blocks){
+    const lines = block.trim().split('\n');
+    if(lines.length < 2) continue;
+
     results.push({
-      title: match[1],
-      url: match[2],
-      snippet: match[3].replace(/\n/g,' ').slice(0,300),
+      title: lines[0].replace(/^\d+\.\s*/, '').trim(),
+      url: lines[1].trim(),
+      snippet: (lines[2] || '').slice(0, 300),
       source: "Bing via Jina"
     });
+    if(results.length >= 20) break;
   }
+
+  if(results.length === 0) throw new Error("Jina parse failed");
   return results;
 }
 
 async function searchDDG(q) {
-  const res = await fetch(`https://api.duckgo.com/?q=${encodeURIComponent(q)}&format=json&no_html=1`);
-  if(!res.ok) throw new Error(res.status);
-  const data = await res.json();
-  const results = [];
-  if(data.AbstractText) results.push({title: data.Heading, url: data.AbstractURL, snippet: data.AbstractText, source: "DDG"});
-  (data.RelatedTopics || []).slice(0,15).forEach(t => {
-    if(t.FirstURL) results.push({title: t.Text.split(' - ')[0], url: t.FirstURL, snippet: t.Text, source: "DDG"});
+  // DDG instant api is bad. Use html scrape endpoint instead
+  const res = await fetch(`https://duckduckgo.com/html/?q=${encodeURIComponent(q)}`, {
+    headers: {'User-Agent': 'Mozilla/5.0'}
   });
+  if(!res.ok) throw new Error(res.status);
+  const html = await res.text();
+
+  const results = [];
+  // Parse DDG html results
+  const regex = /<a rel="nofollow" class="result__a" href="(.*?)">(.*?)<\/a>[\s\S]*?<a class="result__snippet">(.*?)<\/a>/g;
+  let match;
+  while ((match = regex.exec(html))!== null && results.length < 20) {
+    results.push({
+      title: match[2].replace(/<[^>]+>/g,''),
+      url: match[1],
+      snippet: match[3].replace(/<[^>]+>/g,''),
+      source: "DuckGo"
+    });
+  }
   return results;
 }
 
