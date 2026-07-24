@@ -8,8 +8,8 @@ export async function onRequestGet(context) {
   const SERPER_KEY = env.SERPER_KEY || null;
   const BRAVE_KEY = env.BRAVE_API_KEY || null;
 
-  // FIX: If no query, just show the form. Don't run any search.
-  if (!q) return htmlPage("", "", engine, scope);
+  // If no query, just show the form. Don't run any search.
+  if (!q) return htmlPage("", "", "auto", scope, engine);
 
   // Build query based on scope
   let finalQuery = q;
@@ -31,64 +31,32 @@ export async function onRequestGet(context) {
     ddg: () => searchDDG(finalQuery),
   };
 
-  // If specific engine requested
-  if (engine!== 'auto' && engines[engine]) {
-    try {
+  try {
+    // If specific engine requested
+    if (engine!== 'auto' && engines[engine]) {
       results = await engines[engine]();
       provider = engine.toUpperCase();
-    } catch(e){ errors.push(`${engine}: ` + e.message) }
-  }
-  // Auto fallback chain
-  else {
-    const chain = ['serper', 'brave', 'jina', 'ddg'];
-    for(const e of chain){
-      if(e === 'serper' &&!SERPER_KEY) continue;
-      if(e === 'brave' &&!BRAVE_KEY) continue;
-      try {
-        results = await engines[e]();
-        if(results.length > 0) { provider = e.toUpperCase(); break; }
-      } catch(err){ errors.push(`${e}: ` + err.message) }
     }
+    // Auto fallback chain
+    else {
+      const chain = ['serper', 'brave', 'jina', 'ddg'];
+      for(const e of chain){
+        if(e === 'serper' &&!SERPER_KEY) continue;
+        if(e === 'brave' &&!BRAVE_KEY) continue;
+        try {
+          results = await engines[e]();
+          if(results.length > 0) { provider = e.toUpperCase(); break; }
+        } catch(err){ errors.push(`${e}: ` + err.message) }
+      }
+    }
+  } catch(e) {
+    errors.push("Fatal: " + e.message);
   }
 
   return htmlPage(q, results, provider, scope, engine, errors.join(' | '));
 }
 
-  let results = [];
-  let provider = "None";
-  let errors = [];
-
-  const engines = {
-    serper: () => searchSerper(finalQuery, SERPER_KEY),
-    brave: () => searchBrave(finalQuery, BRAVE_KEY),
-    jina: () => searchJina(finalQuery),
-    ddg: () => searchDDG(finalQuery),
-  };
-
-  // If specific engine requested
-  if (engine!== 'auto' && engines[engine]) {
-    try {
-      results = await engines[engine]();
-      provider = engine.toUpperCase();
-    } catch(e){ errors.push(`${engine}: ` + e.message) }
-  }
-  // Auto fallback chain
-  else {
-    const chain = ['serper', 'brave', 'jina', 'ddg'];
-    for(const e of chain){
-      if(e === 'serper' &&!SERPER_KEY) continue;
-      if(e === 'brave' &&!BRAVE_KEY) continue;
-      try {
-        results = await engines[e]();
-        if(results.length > 0) { provider = e.toUpperCase(); break; }
-      } catch(err){ errors.push(`${e}: ` + err.message) }
-    }
-  }
-
-  return htmlPage(q, results, provider, scope, engine, errors.join(' | '));
-}
-
-// === PROVIDER FUNCTIONS === Same as before ===
+// === PROVIDER FUNCTIONS ===
 
 async function searchSerper(q, key) {
   if(!key) throw new Error("No API Key");
@@ -97,7 +65,7 @@ async function searchSerper(q, key) {
     headers: {'X-API-KEY': key, 'Content-Type':'application/json'},
     body: JSON.stringify({q, num: 20})
   });
-  if(!res.ok) throw new Error(res.status);
+  if(!res.ok) throw new Error("HTTP " + res.status);
   const data = await res.json();
   return (data.organic || []).map(r => ({
     title: r.title, url: r.link, snippet: r.snippet, source: "Google"
@@ -109,7 +77,7 @@ async function searchBrave(q, key) {
   const res = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(q)}&count=20`, {
     headers: {'X-Subscription-Token': key, 'Accept':'application/json'}
   });
-  if(!res.ok) throw new Error(res.status);
+  if(!res.ok) throw new Error("HTTP " + res.status);
   const data = await res.json();
   return (data.web?.results || []).map(r => ({
     title: r.title, url: r.url, snippet: r.description, source: "Brave"
@@ -117,10 +85,10 @@ async function searchBrave(q, key) {
 }
 
 async function searchJina(q) {
-  // Jina now wraps everything. Use the reader API
+  // Jina reader for Bing results
   const bingUrl = `https://www.bing.com/search?q=${encodeURIComponent(q)}&count=20`;
   const res = await fetch(`https://r.jina.ai/http://${bingUrl.replace('https://','')}`);
-  if(!res.ok) throw new Error(res.status);
+  if(!res.ok) throw new Error("HTTP " + res.status);
   const text = await res.text();
 
   if(!text || text.length < 100) throw new Error("Jina returned empty");
@@ -147,29 +115,29 @@ async function searchJina(q) {
 }
 
 async function searchDDG(q) {
-  // DDG instant api is bad. Use html scrape endpoint instead
-  const res = await fetch(`https://duckduckgo.com/html/?q=${encodeURIComponent(q)}`, {
+  // DDG html endpoint for real web results
+  const res = await fetch(`https://duckgo.com/html/?q=${encodeURIComponent(q)}`, {
     headers: {'User-Agent': 'Mozilla/5.0'}
   });
-  if(!res.ok) throw new Error(res.status);
+  if(!res.ok) throw new Error("HTTP " + res.status);
   const html = await res.text();
 
   const results = [];
   // Parse DDG html results
-  const regex = /<a rel="nofollow" class="result__a" href="(.*?)">(.*?)<\/a>[\s\S]*?<a class="result__snippet">(.*?)<\/a>/g;
+  const regex = /<a rel="nofollow" class="result__a" href="(.*?)">(.*?)<\/a>[\s\S]*?<a class="result__snippet".*?>(.*?)<\/a>/g;
   let match;
   while ((match = regex.exec(html))!== null && results.length < 20) {
     results.push({
-      title: match[2].replace(/<[^>]+>/g,''),
+      title: match[2].replace(/<[^>]+>/g,'').trim(),
       url: match[1],
-      snippet: match[3].replace(/<[^>]+>/g,''),
+      snippet: match[3].replace(/<[^>]+>/g,'').trim(),
       source: "DuckGo"
     });
   }
   return results;
 }
 
-// === HTML RENDER with Engine Selector ===
+// === HTML RENDER with Pico.css ===
 
 function htmlPage(query, results = [], provider = "", scope = "unrestricted", engine = "auto", error = null) {
   const engines = ['auto','serper','brave','jina','ddg'];
@@ -196,7 +164,12 @@ function htmlPage(query, results = [], provider = "", scope = "unrestricted", en
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Search: ${escapeHtml(query)}</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
-  <style>main {max-width: 850px} article {margin-bottom: 2rem} kbd{font-size:.7rem}</style>
+  <style>
+    main {max-width: 850px}
+    article {margin-bottom: 2rem; border-bottom: 1px solid var(--muted-border-color); padding-bottom: 1rem}
+    kbd{font-size:.7rem}
+    mark{display:block; margin:1rem 0}
+  </style>
 </head>
 <body>
   <main class="container">
@@ -221,17 +194,20 @@ function htmlPage(query, results = [], provider = "", scope = "unrestricted", en
     ${errorBadge}
 
     <section>
-      ${results.length > 0? resultHTML : (query? '<p><i>No results found.</i></p>' : '<p>Pick an engine above.</p>')}
+      ${results.length > 0? resultHTML : (query? '<p><i>No results found.</i></p>' : '<p>Enter a query above. Auto = Serper > Brave > Jina > DDG</p>')}
     </section>
 
     <footer>
-      <small>Engine: auto=Serper>Brave>Jina>DDG. Keys: SERPER_KEY, BRAVE_API_KEY</small>
+      <small>Engine: auto=Serper>Brave>Jina>DDG. Set SERPER_KEY and BRAVE_API_KEY in Pages Settings.</small>
     </footer>
   </main>
 </body>
 </html>
   `, {
-    headers: {'Content-Type': 'text/html; charset=utf-8'}
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-cache, no-store, must-revalidate'
+    }
   });
 }
 
