@@ -22,6 +22,7 @@ export async function onRequestGet(context) {
   let provider = "None";
   let error = null;
 
+  
   // 1. Try Serper
   if (SERPER_KEY) {
     try {
