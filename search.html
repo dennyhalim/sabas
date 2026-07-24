@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brave Search</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+<style>
+.result { margin-bottom: 1.5rem; }
+.result a { font-size: 1.1rem; text-decoration: none; }
+.result .url { color: #008000; font-size: 0.85rem; }
+.result .desc { color: #4d5156; }
+.container { max-width: 800px; }
+</style>
+</head>
+<body>
+<main class="container">
+  <h1>🔍 Brave Search</h1>
+  
+  <form id="searchForm">
+    <div class="grid">
+      <input type="search" name="q" placeholder="Search..." required autofocus>
+      <select name="scope">
+        <option value="unrestricted">Unrestricted</option>
+        <option value="domain">This Domain</option>
+        <option value="host">This Host</option>
+      </select>
+      <button type="submit">Search</button>
+    </div>
+  </form>
+
+  <div id="meta"></div>
+  <div id="results"></div>
+</main>
+
+<script>
+const form = document.getElementById('searchForm');
+const resultsDiv = document.getElementById('results');
+const metaDiv = document.getElementById('meta');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const formData = new FormData(form);
+  const q = formData.get('q');
+  const scope = formData.get('scope');
+  
+  resultsDiv.innerHTML = '<article aria-busy="true">Searching...</article>';
+  
+  const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&scope=${scope}`);
+  const data = await res.json();
+  
+  metaDiv.innerHTML = `<small>Query: <code>${data.query}</code> | Results: ${data.results.length}</small>`;
+  
+  if(data.error) {
+    resultsDiv.innerHTML = `<article style="background:#fee"><b>Error:</b> ${data.error}</article>`;
+    return;
+  }
+  
+  resultsDiv.innerHTML = data.results.map(r => `
+    <article class="result">
+      <a href="${r.url}" target="_blank" rel="noopener">${r.title}</a>
+      <div class="url">${r.url}</div>
+      <div class="desc">${r.snippet}</div>
+    </article>
+  `).join('');
+});
+
+// auto search if ?q= in url
+const params = new URLSearchParams(location.search);
+if(params.get('q')) {
+  form.q.value = params.get('q');
+  form.scope.value = params.get('scope') || 'unrestricted';
+  form.requestSubmit();
+}
+</script>
+</body>
+</html>
