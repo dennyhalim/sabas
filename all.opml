@@ -8,6 +8,7 @@
       <outline text="cstnews.com" type="rss" xmlUrl="http://www.cstnews.com/bm/science-and-health-issues-common-sense-for-today/bm~feed.xml" htmlUrl="http://www.cstnews.com/bm/science-and-health-issues-common-sense-for-today/index.shtml" />
       <outline text="Deep Roots at Home" title="Deep Roots at Home" type="rss" 
             xmlUrl="https://deeprootsathome.com/feed/" htmlUrl="https://deeprootsathome.com/"/>
+      <outline text="thevaccinecourt" type="rss" xmlUrl="https://thevaccinecourt.substack.com/feed" htmlUrl="https://aaronsiri.substack.com" />
       <outline text="Aaron Siri" type="rss" xmlUrl="https://aaronsiri.substack.com/feed" htmlUrl="https://aaronsiri.substack.com" />
       <outline text="Kirsch" type="rss" xmlUrl="https://kirschsubstack.com/feed" htmlUrl="https://kirschsubstack.com" />
       <outline text="America Out Loud News" title="America Out Loud News" type="rss" 
