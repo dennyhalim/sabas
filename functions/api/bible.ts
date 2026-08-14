@@ -2,6 +2,7 @@ export interface Env {
   DB: D1Database
 }
 
+
 export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
   const url = new URL(request.url)
   const strongs = url.searchParams.get('strongs') // H2020
