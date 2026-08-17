@@ -4,17 +4,17 @@ export interface Env {
 
 export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
     // 1. Rate limit check - basic IP check
-  const ip = request.headers.get('CF-Connecting-IP')
+//  const ip = request.headers.get('CF-Connecting-IP')
   
   // 2. Optional API key
 //  const key = new URL(request.url).searchParams.get('key')
 //  if (key !== env.API_KEY) return new Response("Unauthorized", { status: 401 })
 
   // 3. Block expensive queries
-  const url = new URL(request.url)
-  if (url.searchParams.get('q')?.length < 3) {
-    return new Response("Search must be 3+ chars", { status: 400 })
-  }
+//  const url = new URL(request.url)
+//  if (url.searchParams.get('q')?.length < 3) {
+//    return new Response("Search must be 3+ chars", { status: 400 })
+//  }
   
   const url = new URL(request.url)
   const strongs = url.searchParams.get('strongs') // H2020
