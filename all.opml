@@ -4,7 +4,7 @@
     <title>must reads</title>
   </head>
   <body>
-    <outline title="cybersecurity" text="Security">
+    <outline title="Security" text="cybersecurity">
       <outline text="darkreading" title="darkreading" type="rss" 
             xmlUrl="https://www.darkreading.com/rss.xml" htmlUrl="https://www.darkreading.com"/>
       <outline text="ASEAN | CSO Online" title="csoonline" type="rss" 
@@ -24,7 +24,7 @@
       <outline text="Krebs on Security" title="Krebs on Security" type="rss" 
             xmlUrl="https://krebsonsecurity.com/feed/" htmlUrl="https://krebsonsecurity.com"/>
     </outline>
-    <outline title="health" text="Health">
+    <outline title="Health" text="Health and Wellness">
       <outline text="cstnews.com" type="rss" xmlUrl="http://www.cstnews.com/bm/science-and-health-issues-common-sense-for-today/bm~feed.xml" htmlUrl="http://www.cstnews.com/bm/science-and-health-issues-common-sense-for-today/index.shtml" />
       <outline text="Deep Roots at Home" title="Deep Roots at Home" type="rss" 
             xmlUrl="https://deeprootsathome.com/feed/" htmlUrl="https://deeprootsathome.com/"/>
