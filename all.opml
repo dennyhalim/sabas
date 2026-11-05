@@ -37,7 +37,7 @@
       <outline text="Health | The Epoch Times" title="Health | The Epoch Times" type="rss" 
             xmlUrl="https://www.theepochtimes.com/health/feed" htmlUrl="https://www.theepochtimes.com/health/feed"/>
     </outline>
-    <outline text="denny.wordpress.com" title="Biblical">
+    <outline text="endtimes" title="Biblical">
       <outline type="rss" text="Fan of Truth" htmlUrl="https://truelyfanatic.wordpress.com/" xmlUrl="https://truelyfanatic.wordpress.com/feed/" />
       <outline type="rss" text="wayoflife.org" htmlUrl="https://wayoflife.org/" xmlUrl="https://www.wayoflife.org/index_files/Way%20of%20Life%20Rss.xml" />
       <outline type="rss" text="lighthouse trails research" htmlUrl="https://www.lighthousetrailsresearch.com/blog" xmlUrl="https://www.lighthousetrailsresearch.com/blog/?feed=rss2" />
