@@ -5,6 +5,8 @@
   </head>
   <body>
     <outline title="Security" text="cybersecurity">
+      <outline text="goo" type="rss" xmlUrl="https://reclaimthenet.org/feed" htmlUrl="https://reclaimthenet.org" />
+      <outline text="goo" type="rss" xmlUrl="https://www.biometricupdate.com/feed" htmlUrl="https://www.biometricupdate.com" />
       <outline text="darkreading" title="darkreading" type="rss" 
             xmlUrl="https://www.darkreading.com/rss.xml" htmlUrl="https://www.darkreading.com"/>
       <outline text="ASEAN | CSO Online" title="csoonline" type="rss" 
@@ -13,17 +15,14 @@
             xmlUrl="https://www.msspalert.com/feed/topic/latest" htmlUrl="https://www.msspalert.com/"/>
       <outline text="eSecurity Planet" title="eSecurity Planet" type="rss" 
             xmlUrl="https://www.esecurityplanet.com/feed/" htmlUrl="https://www.esecurityplanet.com/"/>
-      <outline text="The Hacker News" title="The Hacker News" type="rss" 
-            xmlUrl="https://thehackernews.com/feeds/posts/default" htmlUrl="https://thehackernews.com"/>
       <outline text="SecurityWeek" title="SecurityWeek" type="rss" 
             xmlUrl="https://www.securityweek.com/feed/" htmlUrl="https://www.securityweek.com/"/>
       <outline text="Malwarebytes" title="Malwarebytes" type="rss" 
             xmlUrl="https://www.malwarebytes.com/blog/feed/index.xml" htmlUrl="https://www.malwarebytes.com/blog/"/>
       <outline text="RestorePrivacy" title="RestorePrivacy" type="rss" 
             xmlUrl="https://restoreprivacy.com/feed/" htmlUrl="https://restoreprivacy.com/"/>
-      <outline text="Krebs on Security" title="Krebs on Security" type="rss" 
-            xmlUrl="https://krebsonsecurity.com/feed/" htmlUrl="https://krebsonsecurity.com"/>
       <outline text="goo" type="rss" xmlUrl="https://asianews.network/tag/defence-security/feed/" htmlUrl="https://asianews.network/tag/defence-security/" />
+      <outline text="goo" type="rss" xmlUrl="https://news.google.com/rss/search?q=cybersecurity" htmlUrl="https://news.google.com" />
     </outline>
     <outline title="Indonesia" text="Bahasa Indonesia">
       <outline text="goo" type="rss" xmlUrl="https://news.google.com/rss/search?hl=id&amp;gl=ID&amp;ceid=ID%3Aid&amp;q=cybersecurity" htmlUrl="https://news.google.com" />
