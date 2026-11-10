@@ -25,7 +25,7 @@
             xmlUrl="https://krebsonsecurity.com/feed/" htmlUrl="https://krebsonsecurity.com"/>
     </outline>
     <outline title="Indonesia" text="Bahasa Indonesia">
-      <outline text="goo" type="rss" xmlUrl="https://news.google.com/rss/search%3Fhl%3Did&gl%3DID&ceid%3DID%3Aid&q%3Dcybersecurity" htmlUrl="https://news.google.com/search%3Fq%3Dcybersecurity" />
+      <outline text="goo" type="rss" xmlUrl="https://news.google.com/rss/search?hl=id&amp;gl=ID&amp;ceid=ID%3Aid&amp;q=cybersecurity" htmlUrl="https://news.google.com" />
     </outline>
     <outline title="Health" text="Health and Wellness">
       <outline text="cstnews.com" type="rss" xmlUrl="http://www.cstnews.com/bm/science-and-health-issues-common-sense-for-today/bm~feed.xml" htmlUrl="http://www.cstnews.com/bm/science-and-health-issues-common-sense-for-today/index.shtml" />
