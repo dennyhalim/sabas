@@ -5,7 +5,7 @@
   </head>
   <body>
     <outline title="Indonesia" text="Bahasa Indonesia">
-      <outline text="google" type="rss" xmlUrl="https://news.google.com/rss/search?hl=id&amp;gl=ID&amp;ceid=ID%3Aid&amp;q=cybersecurity" htmlUrl="https://news.google.com" />
+      <outline text="google" type="rss" xmlUrl="https://news.google.com/rss/search?hl=id&amp;gl=ID&amp;ceid=ID%3Aid&amp;q=cyberattack" htmlUrl="https://news.google.com" />
     </outline>
     <outline title="Security" text="cybersecurity">
       <outline text="reclaimthenet" type="rss" xmlUrl="https://reclaimthenet.org/feed" htmlUrl="https://reclaimthenet.org" />
@@ -25,7 +25,7 @@
       <outline text="RestorePrivacy" title="RestorePrivacy" type="rss" 
             xmlUrl="https://restoreprivacy.com/feed/" htmlUrl="https://restoreprivacy.com/"/>
       <outline text="asianews" type="rss" xmlUrl="https://asianews.network/tag/defence-security/feed/" htmlUrl="https://asianews.network/tag/defence-security/" />
-      <outline text="google" type="rss" xmlUrl="https://news.google.com/rss/search?q=cybersecurity" htmlUrl="https://news.google.com" />
+      <outline text="google" type="rss" xmlUrl="https://news.google.com/rss/search?q=cyberattack" htmlUrl="https://news.google.com" />
     </outline>
     <outline title="Health" text="Health and Wellness">
       <outline text="cstnews.com" type="rss" xmlUrl="http://www.cstnews.com/bm/science-and-health-issues-common-sense-for-today/bm~feed.xml" htmlUrl="http://www.cstnews.com/bm/science-and-health-issues-common-sense-for-today/index.shtml" />
