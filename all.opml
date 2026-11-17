@@ -37,8 +37,6 @@
       <outline text="America Out Loud News" title="America Out Loud News" type="rss" 
             xmlUrl="https://www.americaoutloud.news/category/subject-matter/healthcare/feed/" htmlUrl="https://www.americaoutloud.news/category/subject-matter/healthcare/"/>
       <outline text="Children Health Defense" type="rss" xmlUrl="https://childrenshealthdefense.org/feed/" htmlUrl="https://childrenshealthdefense.org/defender/" />
-      <outline text="Health | The Epoch Times" title="Health | The Epoch Times" type="rss" 
-            xmlUrl="https://www.theepochtimes.com/health/feed" htmlUrl="https://www.theepochtimes.com/health/feed"/>
     </outline>
     <outline text="endtimes" title="Biblical">
       <outline type="rss" text="Fan of Truth" htmlUrl="https://truelyfanatic.wordpress.com/" xmlUrl="https://truelyfanatic.wordpress.com/feed/" />
