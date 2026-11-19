@@ -8,6 +8,7 @@
       <outline text="berita google" type="rss" xmlUrl="https://news.google.com/rss/search?hl=id&amp;gl=ID&amp;ceid=ID%3Aid&amp;q=serangan%20siber" htmlUrl="https://news.google.co.id" />
     </outline>
     <outline title="Security" text="cybersecurity">
+      <outline text="exploited" type="rss" xmlUrl="https://cve.now/feed?filter=kev" htmlUrl="https://cve.now/?filter=kev" />
       <outline text="reclaimthenet" type="rss" xmlUrl="https://reclaimthenet.org/feed" htmlUrl="https://reclaimthenet.org" />
       <outline text="biometricupdate" type="rss" xmlUrl="https://www.biometricupdate.com/feed" htmlUrl="https://www.biometricupdate.com" />
       <outline text="darkreading" title="darkreading" type="rss" 
