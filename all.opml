@@ -10,7 +10,6 @@
     <outline title="Security" text="cybersecurity">
       <outline text="exploited" type="rss" xmlUrl="https://cve.now/feed?filter=kev" htmlUrl="https://cve.now/?filter=kev" />
       <outline text="reclaimthenet" type="rss" xmlUrl="https://reclaimthenet.org/feed" htmlUrl="https://reclaimthenet.org" />
-      <outline text="biometricupdate" type="rss" xmlUrl="https://www.biometricupdate.com/feed" htmlUrl="https://www.biometricupdate.com" />
       <outline text="darkreading" title="darkreading" type="rss" 
             xmlUrl="https://www.darkreading.com/rss.xml" htmlUrl="https://www.darkreading.com"/>
       <outline text="ASEAN | CSO Online" title="csoonline" type="rss" 
