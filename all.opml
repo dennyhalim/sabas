@@ -22,13 +22,13 @@
             xmlUrl="https://www.securityweek.com/feed/" htmlUrl="https://www.securityweek.com/"/>
       <outline text="Malwarebytes" title="Malwarebytes" type="rss" 
             xmlUrl="https://www.malwarebytes.com/blog/feed/index.xml" htmlUrl="https://www.malwarebytes.com/blog/"/>
-      <outline text="RestorePrivacy" title="RestorePrivacy" type="rss" 
+      <outline text="cyberinsider" title="RestorePrivacy" type="rss" 
             xmlUrl="https://cyberinsider.com/security/feed/" htmlUrl="https://cyberinsider.com/security"/>
       <outline text="asianews" type="rss" xmlUrl="https://asianews.network/tag/defence-security/feed/" htmlUrl="https://asianews.network/tag/defence-security/" />
       <outline text="google news" type="rss" xmlUrl="https://news.google.com/rss/search?q=cyberattack" htmlUrl="https://news.google.com" />
     </outline>
     <outline title="Health" text="Health and Wellness">
-      <outline text="nteb" type="rss" xmlUrl="https://www.nowtheendbegins.com/category/nteb-health/feed/" htmlUrl="https://www.nowtheendbegins.com/category/nteb-health/" />
+      <outline text="nteb" type="rss" xmlUrl="https://www.nowtheendbegins.com/category/pandemics/feed/" htmlUrl="https://www.nowtheendbegins.com/category/pandemics/" />
       <outline text="cstnews.com" type="rss" xmlUrl="http://www.cstnews.com/bm/science-and-health-issues-common-sense-for-today/bm~feed.xml" htmlUrl="http://www.cstnews.com/bm/science-and-health-issues-common-sense-for-today/index.shtml" />
       <outline text="Deep Roots at Home" title="Deep Roots at Home" type="rss" 
             xmlUrl="https://deeprootsathome.com/feed/" htmlUrl="https://deeprootsathome.com/"/>
