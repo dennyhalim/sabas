@@ -27,17 +27,19 @@
       <outline text="asianews" type="rss" xmlUrl="https://asianews.network/tag/defence-security/feed/" htmlUrl="https://asianews.network/tag/defence-security/" />
       <outline text="google news" type="rss" xmlUrl="https://news.google.com/rss/search?q=cyberattack" htmlUrl="https://news.google.com" />
     </outline>
-    <outline title="Health" text="Health and Wellness">
+    <outline title="Health" text="Health and Propaganda">
       <outline text="nteb" type="rss" xmlUrl="https://www.nowtheendbegins.com/category/pandemics/feed/" htmlUrl="https://www.nowtheendbegins.com/category/pandemics/" />
       <outline text="cstnews.com" type="rss" xmlUrl="http://www.cstnews.com/bm/science-and-health-issues-common-sense-for-today/bm~feed.xml" htmlUrl="http://www.cstnews.com/bm/science-and-health-issues-common-sense-for-today/index.shtml" />
       <outline text="Deep Roots at Home" title="Deep Roots at Home" type="rss" 
             xmlUrl="https://deeprootsathome.com/feed/" htmlUrl="https://deeprootsathome.com/"/>
       <outline text="thevaccinecourt" type="rss" xmlUrl="https://thevaccinecourt.substack.com/feed" htmlUrl="https://thevaccinecourt.substack.com" />
+      <outline text="offguardian" type="rss" xmlUrl="https://off-guardian.org/feed/" htmlUrl="https://off-guardian.org" />
       <outline text="Aaron Siri" type="rss" xmlUrl="https://aaronsiri.substack.com/feed" htmlUrl="https://aaronsiri.substack.com" />
       <outline text="Kirsch" type="rss" xmlUrl="https://kirschsubstack.com/feed" htmlUrl="https://kirschsubstack.com" />
       <outline text="America Out Loud News" title="America Out Loud News" type="rss" 
-            xmlUrl="https://www.americaoutloud.news/category/subject-matter/healthcare/feed/" htmlUrl="https://www.americaoutloud.news/category/subject-matter/healthcare/"/>
+            xmlUrl="https://www.americaoutloud.news/feed/" htmlUrl="https://www.americaoutloud.news"/>
       <outline text="Children Health Defense" type="rss" xmlUrl="https://childrenshealthdefense.org/feed/" htmlUrl="https://childrenshealthdefense.org/defender/" />
+      <outline type="rss" text="lighthouse trails research" htmlUrl="https://www.lighthousetrailsresearch.com/blog/category/cultural-issues" xmlUrl="https://www.lighthousetrailsresearch.com/blog/category/cultural-issues/feed" />
     </outline>
     <outline text="endtimes" title="Biblical">
       <outline type="rss" text="Fan of Truth" htmlUrl="https://truelyfanatic.wordpress.com/" xmlUrl="https://truelyfanatic.wordpress.com/feed/" />
